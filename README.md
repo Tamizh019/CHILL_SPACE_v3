@@ -4,8 +4,6 @@
 > **Your all-in-one collaboration hub.**  
 > *Connect your crew. Collaborate on projects. Play games. Chill together.*
 
-![Version](https://img.shields.io/badge/status-work%20in%20progress-orange) ![Next.js](https://img.shields.io/badge/built%20with-Next.js%2016-black) ![Tailwind](https://img.shields.io/badge/styling-Tailwind%20CSS%204-cyan)
-
 ---
 
 > [!IMPORTANT]
