@@ -9,15 +9,15 @@ export const Hero = () => {
         <>
             {/* Hero Section */}
             <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
-                {/* Ultra-Smooth Multi-Layer Blue Gradient - Cobalt Style */}
+                {/* Ultra-Smooth Multi-Layer Violet Gradient - Sanctuary Style */}
                 <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-[#0c1420]/40 via-transparent to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 h-[80%] bg-gradient-to-t from-[#0a1525]/35 via-[#0b1320]/15 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-[#0d1a2d]/30 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-[#0f0c15]/40 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-[80%] bg-gradient-to-t from-[#130d1c]/35 via-[#0e0b16]/15 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-[#1a1126]/30 via-transparent to-transparent" />
                     <div
                         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150%] h-[50%]"
                         style={{
-                            background: 'radial-gradient(ellipse at bottom center, rgba(13,26,45,0.25) 0%, transparent 70%)',
+                            background: 'radial-gradient(ellipse at bottom center, rgba(29,18,48,0.3) 0%, transparent 70%)',
                         }}
                     />
                 </div>
@@ -115,8 +115,8 @@ export const Hero = () => {
 // --- Separator Line Component ---
 const SeparatorLine = () => (
     <div className="relative py-8">
-        <div className="absolute left-1/2 -translate-x-1/2 w-[600px] h-[1px] bg-gradient-to-r from-transparent via-[#1a4a7a]/50 to-transparent" />
-        <div className="absolute left-1/2 -translate-x-1/2 w-[400px] h-6 bg-[#1a4a7a]/15 blur-xl -top-2" />
+        <div className="absolute left-1/2 -translate-x-1/2 w-[600px] h-[1px] bg-gradient-to-r from-transparent via-[#8b5cf6]/40 to-transparent" />
+        <div className="absolute left-1/2 -translate-x-1/2 w-[400px] h-6 bg-[#8b5cf6]/10 blur-xl -top-2" />
     </div>
 );
 
@@ -169,11 +169,11 @@ const StarParticles = () => {
     );
 };
 
-// --- Cobalt-Style Button (Outlined with bottom glow) ---
+// --- Violet-Style Button (Outlined with bottom glow) ---
 const CobaltButton = ({ children }: { children: React.ReactNode }) => (
-    <button className="group relative px-6 py-3 rounded-full border border-white/20 bg-transparent overflow-hidden transition-all duration-300 hover:border-white/40">
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent group-hover:via-cyan-400/80 group-hover:w-3/4 transition-all duration-300" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-4 bg-cyan-400/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <button className="group relative px-6 py-3 rounded-full border border-white/20 bg-transparent overflow-hidden transition-all duration-300 hover:border-violet-500/40">
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent group-hover:via-violet-400/80 group-hover:w-3/4 transition-all duration-300" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-4 bg-violet-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <span className="relative z-10 text-white text-sm font-medium">
             {children}
         </span>
@@ -249,7 +249,7 @@ const ProductPreview = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <StatCard label="Active chats" value="12" badge="+3" badgeColor="green" />
-                                <StatCard label="Unread messages" value="28" badge="-8" badgeColor="blue" />
+                                <StatCard label="Unread messages" value="28" badge="-8" badgeColor="violet" />
                                 <StatCard label="Response time" value="< 2m" />
                             </div>
                         </div>
@@ -270,13 +270,13 @@ const StatCard = ({
     label: string;
     value: string;
     badge?: string;
-    badgeColor?: "green" | "blue";
+    badgeColor?: "green" | "violet";
 }) => (
     <div className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
         <div className="text-xs text-[#666] mb-2 flex items-center gap-2">
             {label}
             {badge && (
-                <span className={`px-1.5 py-0.5 rounded text-[10px] ${badgeColor === "green" ? "bg-green-500/20 text-green-400" : "bg-blue-500/20 text-blue-400"
+                <span className={`px-1.5 py-0.5 rounded text-[10px] ${badgeColor === "green" ? "bg-green-500/20 text-green-400" : "bg-violet-500/20 text-violet-400"
                     }`}>
                     {badge}
                 </span>
@@ -420,8 +420,8 @@ const FeaturesSection = () => {
 const CTASection = () => {
     return (
         <section className="relative py-32 px-6 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a1a2e] via-[#0c1525]/70 to-transparent pointer-events-none" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-[#0d2847]/50 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#110d1c] via-[#100b1a]/70 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-[#2e1065]/40 rounded-full blur-[120px] pointer-events-none" />
 
             <motion.div
                 initial={{ opacity: 0, y: 50 }}
@@ -449,8 +449,8 @@ const CTASection = () => {
 const Footer = () => {
     return (
         <footer className="relative border-t border-white/5 py-10 px-6 bg-[#0a0a0a]">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[1px] bg-gradient-to-r from-transparent via-[#1a4a7a]/50 to-transparent" />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-8 bg-[#1a4a7a]/10 blur-xl" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[1px] bg-gradient-to-r from-transparent via-[#8b5cf6]/40 to-transparent" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-8 bg-[#8b5cf6]/10 blur-xl" />
 
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-6 text-sm text-[#666]">
@@ -487,11 +487,11 @@ const Footer = () => {
                     </div>
                 </div>
             </div>
-            <div className="max-w-6xl mx-auto mt-8 text-xs text-[#555] leading-relaxed space-y-2 flex flex-col md:flex-row justify-between items-center">
-                <p>
+            <div className="max-w-6xl mx-auto mt-8 text-xs text-[#555] leading-relaxed flex flex-col md:flex-row justify-between items-center gap-4">
+                <p className="max-w-xl text-center md:text-left">
                     Chill Space is a real-time communication platform, not a telecommunications provider. Messaging services are provided through secure, encrypted channels.
                 </p>
-                <p className="text-[#666]">
+                <p className="text-[#666] text-center md:text-right whitespace-nowrap">
                     Designed & Developed by <span className="text-white font-medium">Tamizharasan</span>
                 </p>
             </div>

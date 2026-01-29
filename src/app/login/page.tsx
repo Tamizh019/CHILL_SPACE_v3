@@ -2,7 +2,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -10,11 +12,27 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
+    const supabase = createClient();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        setIsLoading(false);
+        setError(null);
+
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            setError(error.message);
+            setIsLoading(false);
+        } else {
+            router.push('/home');
+            router.refresh();
+        }
     };
 
     return (
@@ -42,7 +60,7 @@ export default function LoginPage() {
                         {/* Logo Link to Home */}
                         <div className="flex justify-center mb-8">
                             <Link href="/">
-                                <div className="w-20 h-20 rounded-full bg-[#111] border border-white/10 flex items-center justify-center shadow-[0_0_40px_rgba(6,182,212,0.15)] hover:border-cyan-500/30 transition-colors group cursor-pointer">
+                                <div className="w-20 h-20 rounded-full bg-[#111] border border-white/10 flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.15)] hover:border-violet-500/30 transition-colors group cursor-pointer">
                                     <img
                                         src="/logo1.svg"
                                         alt="Chill Space"
@@ -88,7 +106,7 @@ export default function LoginPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="name@example.com"
                                         required
-                                        className="w-full bg-[#111] border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder:text-[#444] text-sm focus:outline-none focus:border-cyan-500/50 transition-colors"
+                                        className="w-full bg-[#111] border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder:text-[#444] text-sm focus:outline-none focus:border-violet-500/50 transition-colors"
                                     />
                                 </div>
                             </div>
@@ -99,7 +117,7 @@ export default function LoginPage() {
                                     <label className="block text-xs text-[#888] font-medium uppercase tracking-wider">
                                         Password
                                     </label>
-                                    <Link href="#" className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors">
+                                    <Link href="#" className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
                                         Forgot?
                                     </Link>
                                 </div>
@@ -111,7 +129,7 @@ export default function LoginPage() {
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="Enter your password"
                                         required
-                                        className="w-full bg-[#111] border border-white/10 rounded-xl py-3.5 pl-11 pr-11 text-white placeholder:text-[#444] text-sm focus:outline-none focus:border-cyan-500/50 transition-colors"
+                                        className="w-full bg-[#111] border border-white/10 rounded-xl py-3.5 pl-11 pr-11 text-white placeholder:text-[#444] text-sm focus:outline-none focus:border-violet-500/50 transition-colors"
                                     />
                                     <button
                                         type="button"
@@ -127,16 +145,24 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            {/* Submit Button - Subtle Cobalt Style */}
+                            {/* Error Message */}
+                            {error && (
+                                <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center gap-3 text-red-500 text-xs">
+                                    <AlertCircle className="w-4 h-4 shrink-0" />
+                                    <p>{error}</p>
+                                </div>
+                            )}
+
+                            {/* Submit Button - Subtle Violet Style */}
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full group relative px-6 py-3.5 mt-2 rounded-full border border-white/20 bg-transparent overflow-hidden transition-all duration-500 hover:border-white/40 hover:bg-white/[0.02] hover:shadow-[0_0_20px_rgba(6,182,212,0.1)] active:scale-[0.99] disabled:opacity-50"
+                                className="w-full group relative px-6 py-3.5 mt-2 rounded-full border border-white/20 bg-transparent overflow-hidden transition-all duration-500 hover:border-violet-500/40 hover:bg-violet-500/[0.05] hover:shadow-[0_0_20px_rgba(139,92,246,0.1)] active:scale-[0.99] disabled:opacity-50"
                             >
-                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent group-hover:via-cyan-400/80 group-hover:w-3/4 transition-all duration-500" />
-                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-4 bg-cyan-400/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent group-hover:via-violet-400/80 group-hover:w-3/4 transition-all duration-500" />
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-4 bg-violet-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                 <span className="relative z-10 text-white text-sm font-medium transition-colors duration-300">
-                                    {isLoading ? "Entering..." : "Enter Chill Space"}
+                                    {isLoading ? "Signing In..." : "Enter Chill Space"}
                                 </span>
                             </button>
                         </form>
@@ -165,7 +191,7 @@ export default function LoginPage() {
                         {/* Sign Up Link */}
                         <p className="text-center text-sm text-[#666] mt-8">
                             New here?{" "}
-                            <Link href="/signup" className="text-white font-medium hover:text-cyan-400 transition-colors">
+                            <Link href="/signup" className="text-white font-medium hover:text-violet-400 transition-colors">
                                 Create an account
                             </Link>
                         </p>
@@ -179,15 +205,15 @@ export default function LoginPage() {
 // Background Effects - Matching Landing Page
 const BackgroundEffects = () => (
     <>
-        {/* Multi-Layer Blue Gradient */}
+        {/* Multi-Layer Violet Gradient */}
         <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-[#0c1420]/40 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 h-[80%] bg-gradient-to-t from-[#0a1525]/35 via-[#0b1320]/15 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-[#0d1a2d]/30 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 h-full bg-gradient-to-t from-[#0f0c15]/40 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 h-[80%] bg-gradient-to-t from-[#130d1c]/35 via-[#0e0b16]/15 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-[#1a1126]/30 via-transparent to-transparent" />
             <div
                 className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[150%] h-[50%]"
                 style={{
-                    background: 'radial-gradient(ellipse at bottom center, rgba(13,26,45,0.25) 0%, transparent 70%)',
+                    background: 'radial-gradient(ellipse at bottom center, rgba(29,18,48,0.3) 0%, transparent 70%)',
                 }}
             />
         </div>
