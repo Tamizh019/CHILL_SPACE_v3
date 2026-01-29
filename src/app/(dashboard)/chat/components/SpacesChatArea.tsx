@@ -42,6 +42,11 @@ export function SpacesChatArea({ currentChannel, messages, currentUser, sendMess
         return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    // Auto-scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, messagesEndRef]);
+
     // Check for Announcements restriction
     const isAnnouncement = currentChannel?.id === 'announcements';
     // Check if user is admin (or owner)

@@ -225,7 +225,34 @@ export function useChat() {
     const sendMessage = async (content: string) => {
         if (!currentChannel || !currentUser || !content.trim()) return;
 
-        // Optimistic UI update (optional, skipping for now to rely on real-time)
+        // Handle Announcements
+        if (currentChannel.id === 'announcements') {
+            const { error } = await supabase
+                .from('global_alerts')
+                .insert({
+                    message: content,
+                    type: 'info',
+                    is_active: true
+                });
+
+            if (error) {
+                console.error('Error sending announcement:', error);
+            } else {
+                // Optimistic update for immediate feedback
+                const optimisticMsg: any = {
+                    id: Date.now().toString(), // Temporary ID
+                    content: content,
+                    sent_at: new Date().toISOString(),
+                    user_id: 'system',
+                    username: 'Tamizharasan',
+                    recipient_id: null,
+                    channel_id: 'announcements',
+                    users: { avatar_url: '/logo1.svg', role: 'owner' }
+                };
+                setMessages(prev => [...prev, optimisticMsg]);
+            }
+            return;
+        }
 
         const { error } = await supabase
             .from('messages')

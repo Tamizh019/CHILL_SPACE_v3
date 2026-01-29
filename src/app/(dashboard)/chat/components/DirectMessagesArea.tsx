@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Database } from '@/types/supabase';
 
 type User = Database['public']['Tables']['users']['Row'];
@@ -41,6 +41,14 @@ export function DirectMessagesArea({ recipient, messages, currentUser, sendMessa
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
+
+    // Auto-scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, messagesEndRef]);
+
+    // Auto-scroll to bottom
+    // (useEffect logic is already added above)
 
     if (!recipient) {
         return (
