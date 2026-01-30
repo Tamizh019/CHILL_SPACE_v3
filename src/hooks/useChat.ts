@@ -8,6 +8,10 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
         avatar_url: string | null;
         role: string | null;
     } | null;
+    reactions?: { emoji: string; count: number; userIds: string[]; usernames: string[] }[];
+    pinned_by?: string | null;
+    pinned_by_username?: string | null;
+    edited_at?: string | null;
 };
 type Channel = Database['public']['Tables']['channels']['Row'];
 type User = Database['public']['Tables']['users']['Row'];
