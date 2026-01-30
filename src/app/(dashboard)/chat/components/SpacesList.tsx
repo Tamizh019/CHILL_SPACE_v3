@@ -36,7 +36,7 @@ export function SpacesList({ channels, selectedId, onSelect }: SpacesListProps) 
             </div>
             {channels.map(channel => {
                 const isActive = selectedId === channel.id;
-                const style = getChannelStyles(channel.name);
+                const style = getChannelStyles(channel.name || 'channel');
 
                 return (
                     <div
