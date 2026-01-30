@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 /* Root CSS Variables - Cobalt-Inspired Dark Theme */
@@ -27,8 +26,9 @@
 
 /* Tailwind Theme Configuration */
 @theme inline {
-  /* Font Family - Inter for clean minimal look */
-  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Font Families */
+  --font-sans: var(--font-sora), system-ui;
+  --font-heading: var(--font-space-grotesk), monospace;
   --font-mono: "Courier New", monospace;
 
   /* Colors */
@@ -86,9 +86,18 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans);
+  font-family: var(--font-sora), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-space-grotesk), monospace;
 }
 
 /* Selection */
@@ -117,8 +126,15 @@ body {
 
 /* Glass Effect */
 .glass {
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  background: rgba(20, 20, 20, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }

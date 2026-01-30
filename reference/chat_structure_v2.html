@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chill Space - Chat Architecture V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Sora:wght@100;200;300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Sora', 'sans-serif'],
+                        heading: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        background: '#0c0c0c',
+                        card: '#141414',
+                        violet: {
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0c0c0c;
+            color: #fafafa;
+            overflow: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen font-sans bg-[#0c0c0c]">
+
+    <!-- 1. MAIN APP SIDEBAR (Navigation) -->
+    <aside
+        class="w-20 hidden md:flex flex-col items-center py-6 border-r border-white/5 bg-black/40 backdrop-blur-xl z-20">
+        <div
+            class="mb-10 w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <img src="https://raw.githubusercontent.com/Tamizh019/CHILL_SPACE_v3/main/public/logo1.svg" alt="C"
+                class="w-6 h-6 object-contain brightness-200">
+        </div>
+        <nav class="flex-1 flex flex-col gap-6 w-full text-slate-500">
+            <a href="#" class="flex items-center justify-center h-10 hover:text-white"><span
+                    class="material-icons-round text-2xl">home</span></a>
+            <a href="#" class="flex items-center justify-center h-10 text-violet-400 relative">
+                <span class="material-icons-round text-2xl drop-shadow-[0_0_8px_rgba(139,92,246,0.6)]">forum</span>
+                <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-violet-500 rounded-l-full"></div>
+            </a>
+            <a href="#" class="flex items-center justify-center h-10 hover:text-white"><span
+                    class="material-icons-round text-2xl">code</span></a>
+        </nav>
+    </aside>
+
+    <!-- 2. CHAT NAVIGATION SIDEBAR (The "Architecture" Part) -->
+    <div class="w-80 border-r border-white/5 bg-[#0f0f12] flex flex-col">
+
+        <!-- HEADER: Toggle Switch (Instagram Style Concept) -->
+        <div class="p-6 pb-4">
+            <h1 class="font-heading text-2xl font-bold text-white mb-6">Chat</h1>
+
+            <!-- The Toggle -->
+            <div class="p-1 rounded-xl bg-white/5 flex mb-4">
+                <button
+                    class="flex-1 py-2 rounded-lg bg-white/10 text-white text-xs font-bold font-heading shadow-sm transition-all">
+                    Spaces
+                </button>
+                <button
+                    class="flex-1 py-2 rounded-lg text-slate-500 hover:text-white text-xs font-bold font-heading transition-all">
+                    Direct Messages
+                </button>
+            </div>
+
+            <!-- Search -->
+            <div class="relative">
+                <span
+                    class="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+                <input type="text" placeholder="Find a channel..."
+                    class="w-full h-9 bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/30">
+            </div>
+        </div>
+
+        <!-- LIST: Public Spaces (Because "Spaces" tab is active) -->
+        <div class="flex-1 overflow-y-auto px-4 space-y-1">
+
+            <div class="text-[10px] font-heading font-bold uppercase tracking-widest text-slate-600 mt-2 mb-2 px-2">
+                Community</div>
+
+            <!-- Active Channel -->
+            <div
+                class="group flex items-center gap-3 p-2 rounded-lg bg-violet-500/10 border border-violet-500/20 cursor-pointer">
+                <div class="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">
+                    <span class="material-icons-round text-lg">tag</span>
+                </div>
+                <div class="flex-1">
+                    <div class="font-heading font-semibold text-white text-sm">General</div>
+                    <div class="text-[10px] text-violet-300">32 online</div>
+                </div>
+            </div>
+
+            <div
+                class="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-white/5 text-slate-400 flex items-center justify-center">
+                    <span class="material-icons-round text-lg">campaign</span>
+                </div>
+                <div class="flex-1">
+                    <div class="font-heading font-medium text-slate-300 text-sm">Announcements</div>
+                    <div class="text-[10px] text-slate-600">Admin only</div>
+                </div>
+            </div>
+
+            <div class="text-[10px] font-heading font-bold uppercase tracking-widest text-slate-600 mt-6 mb-2 px-2">
+                Topics</div>
+
+            <div
+                class="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                    <span class="material-icons-round text-lg">code</span>
+                </div>
+                <div class="flex-1">
+                    <div class="font-heading font-medium text-slate-300 text-sm">Coding & Dev</div>
+                    <div class="text-[10px] text-slate-600">8 active</div>
+                </div>
+            </div>
+
+            <div
+                class="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center">
+                    <span class="material-icons-round text-lg">music_note</span>
+                </div>
+                <div class="flex-1">
+                    <div class="font-heading font-medium text-slate-300 text-sm">Music Lounge</div>
+                    <div class="text-[10px] text-slate-600">Lofi playing</div>
+                </div>
+            </div>
+
+            <div
+                class="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 cursor-pointer transition-colors">
+                <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center">
+                    <span class="material-icons-round text-lg">school</span>
+                </div>
+                <div class="flex-1">
+                    <div class="font-heading font-medium text-slate-300 text-sm">Exam Prep</div>
+                    <div class="text-[10px] text-slate-600">Study session</div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom: User Status -->
+        <div class="p-4 border-t border-white/5 bg-black/20">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <img src="https://i.pravatar.cc/100?img=11" class="w-8 h-8 rounded-full">
+                    <div
+                        class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]">
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="font-heading font-bold text-xs text-white">Alex User</div>
+                    <div class="text-[10px] text-slate-500">Online</div>
+                </div>
+                <button class="text-slate-500 hover:text-white"><span
+                        class="material-icons-round text-lg">settings</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MAIN CHAT AREA (The "Group" Context) -->
+    <div class="flex-1 flex flex-col relative bg-gradient-to-b from-[#0c0c0c] to-[#110d1c]">
+
+        <!-- Header -->
+        <div class="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/10 backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl text-slate-500">#</span>
+                <div>
+                    <h2 class="font-heading text-lg font-bold text-white leading-tight">General</h2>
+                    <p class="text-[10px] text-slate-400">The main hangout spot for everyone.</p>
+                </div>
+            </div>
+            <div class="flex -space-x-2">
+                <img src="https://i.pravatar.cc/100?img=33" class="w-8 h-8 rounded-full border-2 border-[#110d1c]">
+                <img src="https://i.pravatar.cc/100?img=12" class="w-8 h-8 rounded-full border-2 border-[#110d1c]">
+                <img src="https://i.pravatar.cc/100?img=59" class="w-8 h-8 rounded-full border-2 border-[#110d1c]">
+                <div
+                    class="w-8 h-8 rounded-full border-2 border-[#110d1c] bg-white/10 flex items-center justify-center text-[10px] text-white font-bold">
+                    +29</div>
+            </div>
+        </div>
+
+        <!-- Messages (Placeholder) -->
+        <div class="flex-1 p-6 flex flex-col items-center justify-center text-center opacity-50">
+            <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                <span class="material-icons-round text-3xl text-slate-600">chat_bubble_outline</span>
+            </div>
+            <p class="text-slate-500 text-sm">This is the start of the #general channel.</p>
+        </div>
+
+        <!-- Input -->
+        <div class="p-6">
+            <div class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center gap-3">
+                <button class="text-slate-400 hover:text-white"><span class="material-icons-round">add</span></button>
+                <input type="text" placeholder="Message #general..."
+                    class="flex-1 bg-transparent text-sm text-white focus:outline-none">
+                <button class="text-slate-400 hover:text-white"><span
+                        class="material-icons-round">sentiment_satisfied</span></button>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

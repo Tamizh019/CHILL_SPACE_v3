@@ -35,13 +35,13 @@ export const Navbar = () => {
                                 opacity: [1, 0.4, 1],
                                 scale: [1, 1.3, 1],
                                 boxShadow: [
-                                    "0 0 10px rgba(34,211,238,0.4)",
-                                    "0 0 20px rgba(34,211,238,0.8)",
-                                    "0 0 10px rgba(34,211,238,0.4)"
+                                    "0 0 10px rgba(139,92,246,0.4)",
+                                    "0 0 20px rgba(139,92,246,0.8)",
+                                    "0 0 10px rgba(139,92,246,0.4)"
                                 ]
                             }}
                             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="w-1.5 h-1.5 rounded-full bg-cyan-400 ml-1.5 mt-1"
+                            className="w-1.5 h-1.5 rounded-full bg-violet-500 ml-1.5 mt-1"
                         />
                     </div>
                 </Link>

@@ -29,7 +29,7 @@ We are building a premium, high-aesthetic environment where productivity meets v
 - **Premium Auth**: Custom-designed Login and Signup pages with particle effects, 3D tilts, and subtle interaction details.
 
 ### 🛠 Collaboration Tools
-- **📢 Real-time Chat**: Instant messaging for your squad. (In Progress)
+- **📢 Real-time Chat**: Instant messaging for your squad with Public Spaces and Private DMs. (Live)
 - **💻 Code Editor**: Built-in environment for collaborative coding sessions. (Planned)
 - **📁 Project Spaces**: Dedicated vaults for files, threads, and college project management. (Planned)
 - **🎮 Interactive Games**: Mini-games to take a break and bond with your team. (Planned)
@@ -43,9 +43,9 @@ We are building a premium, high-aesthetic environment where productivity meets v
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
 
-**Backend & Infrastructure** (Planned)
+**Backend & Infrastructure** (Implemented)
 - **Core Backend**: [Supabase](https://supabase.com/) (PostgreSQL, Auth, Realtime, Storage)
-- **Microservices**: [Rust](https://www.rust-lang.org/)
+- **Microservices**: [Rust](https://www.rust-lang.org/) (Planned)
     - *Code Runner*: Secure sandbox for executing user code.
     - *Game Server*: High-performance WebSocket server for real-time gaming.
     - *Collab Engine*: CRDT-based operational transformation for shared editing.
