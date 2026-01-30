@@ -320,7 +320,7 @@ export function SpacesChatArea({
                         const isCurrentUser = msg.user_id === currentUser?.id;
                         const avatar = msg.users?.avatar_url;
                         const messageRole = msg.users?.role || null;
-                        const canDelete = canDeleteMessage(msg.user_id, messageRole);
+                        const canDelete = canDeleteMessage(msg.user_id || '', messageRole);
                         const urls = extractUrls(msg.content || '');
                         const prevMsg = index > 0 ? messages[index - 1] : null;
                         const isGrouped = shouldGroupWithPrevious(msg, prevMsg);

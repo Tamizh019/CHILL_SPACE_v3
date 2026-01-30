@@ -33,14 +33,31 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // refreshing the auth token
-    // OPTIMIZATION: Only call getUser if we have potential Supabase cookies
-    // This saves ~300ms-3s on requests for unauthenticated users
-    const cookies = request.cookies.getAll();
-    const hasSupabaseCookie = cookies.some(c => c.name.startsWith('sb-'));
+    // IMPORTANT: Avoid writing any logic between createServerClient and
+    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+    // issues with users being randomly logged out.
 
-    if (hasSupabaseCookie) {
-        await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    // Protected Routes: Redirect to /login if not authenticated
+    if (
+        !user &&
+        (request.nextUrl.pathname.startsWith('/chat') ||
+            request.nextUrl.pathname.startsWith('/home'))
+    ) {
+        // no user, potentially respond by redirecting the user to the login page
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
+    }
+
+    // Auth Routes: Redirect to /home if already authenticated
+    if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/home'
+        return NextResponse.redirect(url)
     }
 
     return supabaseResponse
