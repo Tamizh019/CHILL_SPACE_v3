@@ -2,6 +2,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
+// Type interfaces for Supabase queries
+interface MessageRow {
+    id: string;
+    content: string;
+    sent_at: string;
+    user_id: string;
+    recipient_id: string | null;
+}
+
+interface UserRow {
+    id: string;
+    username: string | null;
+    avatar_url: string | null;
+}
+
+interface OnlineMemberRow {
+    user_id: string;
+    last_seen: string | null;
+    is_online: boolean;
+}
+
 interface RecentChat {
     id: string;
     name: string;
@@ -34,7 +55,7 @@ export function RightSidebar() {
                     .or(`user_id.eq.${user.id},recipient_id.eq.${user.id}`)
                     .not('recipient_id', 'is', null)
                     .order('sent_at', { ascending: false })
-                    .limit(50);
+                    .limit(50) as { data: MessageRow[] | null; error: any };
 
                 if (msgError) {
                     console.error('RightSidebar: Error fetching messages:', msgError.message);
@@ -70,7 +91,7 @@ export function RightSidebar() {
                 const { data: users, error: userError } = await supabase
                     .from('users')
                     .select('id, username, avatar_url')
-                    .in('id', partnerIds);
+                    .in('id', partnerIds) as { data: UserRow[] | null; error: any };
 
                 if (userError) {
                     console.error('RightSidebar: Error fetching users:', userError.message);
@@ -82,7 +103,7 @@ export function RightSidebar() {
                 const { data: onlineData } = await supabase
                     .from('online_members')
                     .select('user_id, last_seen, is_online')
-                    .in('user_id', partnerIds);
+                    .in('user_id', partnerIds) as { data: OnlineMemberRow[] | null; error: any };
 
                 const onlineMap = new Map<string, { isOnline: boolean; lastSeen: Date | null }>();
                 onlineData?.forEach((member) => {
@@ -211,8 +232,8 @@ export function RightSidebar() {
                                             </span>
                                         </div>
                                         <p className={`text-xs truncate mt-0.5 ${isRecentlyOnline
-                                                ? 'text-green-500'
-                                                : 'text-slate-500 group-hover:text-slate-400'
+                                            ? 'text-green-500'
+                                            : 'text-slate-500 group-hover:text-slate-400'
                                             }`}>
                                             {isRecentlyOnline ? 'Active Now' : (chat.lastMessage || 'No messages')}
                                         </p>

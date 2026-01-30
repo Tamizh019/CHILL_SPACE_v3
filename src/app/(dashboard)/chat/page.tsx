@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useChat } from '@/hooks/useChat';
 import { ChatSidebar } from './components/ChatSidebar';
 import { SpacesChatArea } from './components/SpacesChatArea';
 import { DirectMessagesArea } from './components/DirectMessagesArea';
 
-export default function ChatPage() {
+function ChatPageContent() {
     const [activeTab, setActiveTab] = useState<'spaces' | 'dms'>('spaces');
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -110,3 +110,16 @@ export default function ChatPage() {
         </div>
     );
 }
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex-1 flex items-center justify-center h-full">
+                <div className="animate-pulse text-slate-500">Loading chat...</div>
+            </div>
+        }>
+            <ChatPageContent />
+        </Suspense>
+    );
+}
+

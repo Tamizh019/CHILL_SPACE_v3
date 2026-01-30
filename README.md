@@ -65,4 +65,44 @@ We are building a premium, high-aesthetic environment where productivity meets v
     - *Game Server*: High-performance WebSocket server for real-time gaming.
     - *Collab Engine*: CRDT-based operational transformation for shared editing.
 
+---
+
+## 🔧 Developer Notes
+
+### Supabase Type Generation
+
+When you add/change tables or columns in Supabase, regenerate TypeScript types to keep the codebase type-safe:
+
+```bash
+# Login to Supabase CLI (one-time setup)
+npx supabase login
+
+# Regenerate types from your database schema
+npx supabase gen types typescript --project-id cmriyjrqkvpdchvbpnne > src/types/supabase.ts
+```
+
+> [!TIP]
+> Run this command after any database schema changes to avoid TypeScript build errors.
+
+### Key Dependencies
+
+| Package | Purpose | Use Case in Chill Space |
+|---------|---------|------------------------|
+| `@radix-ui/react-label` | Accessible form labels | Labels for input fields in profile settings, channel creation modals |
+| `react-hook-form` | Performant form handling | Managing form state for login/signup, settings, and channel configuration |
+| `@hookform/resolvers` | Validation integration | Connecting Zod/Yup validation schemas to forms for error handling |
+
+**Example Use Case:**
+```tsx
+// Future: Channel Creation Form
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const form = useForm({
+  resolver: zodResolver(channelSchema),
+  defaultValues: { name: '', description: '' }
+});
+```
+
+---
 

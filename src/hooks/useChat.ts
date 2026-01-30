@@ -98,7 +98,7 @@ export function useChat() {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'channels' }, (payload) => {
                 setChannels(prev => {
                     const existing = prev.filter(c => c.id !== 'announcements');
-                    const newChannels = [...existing, payload.new as Channel].sort((a, b) => a.name.localeCompare(b.name));
+                    const newChannels = [...existing, payload.new as Channel].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                     // Keep Announcements at top
                     return [{
                         id: 'announcements',
@@ -265,15 +265,18 @@ export function useChat() {
                 return [...prev, newMsg as any]; // Optimistic add, will update with user data async
             });
 
-            const { data: sender } = await supabase
-                .from('users')
-                .select('avatar_url, role')
-                .eq('id', newMsg.user_id)
-                .single();
+            // Only fetch user details if we have a valid user_id
+            if (newMsg.user_id) {
+                const { data: sender } = await supabase
+                    .from('users')
+                    .select('avatar_url, role')
+                    .eq('id', newMsg.user_id)
+                    .single();
 
-            setMessages(prev => prev.map(msg =>
-                msg.id === newMsg.id ? { ...msg, users: sender } : msg
-            ) as any);
+                setMessages(prev => prev.map(msg =>
+                    msg.id === newMsg.id ? { ...msg, users: sender } : msg
+                ) as any);
+            }
         };
 
         messageSubscription.subscribe();
@@ -295,7 +298,7 @@ export function useChat() {
                     message: content,
                     type: 'info',
                     is_active: true
-                });
+                } as any);
 
             if (error) {
                 console.error('Error sending announcement:', error);
@@ -324,7 +327,7 @@ export function useChat() {
                 user_id: currentUser.id,
                 username: currentUser.username,
                 sent_at: new Date().toISOString()
-            });
+            } as any);
 
         if (error) {
             console.error('Error sending message:', error);
@@ -447,7 +450,7 @@ export function useChat() {
                 recipient_id: recipient.id,
                 username: currentUser.username,
                 sent_at: new Date().toISOString()
-            });
+            } as any);
 
         if (error) console.error('Error sending DM:', error);
     };
@@ -498,13 +501,13 @@ export function useChat() {
                         username: currentUser.username,
                         is_online: true,
                         last_seen: new Date().toISOString(),
-                    });
+                    } as any);
                 }
             });
 
         // Cleanup: Mark user as offline when leaving
         return () => {
-            supabase.from('online_members').update({
+            (supabase.from('online_members') as any).update({
                 is_online: false,
                 last_seen: new Date().toISOString(),
             }).eq('user_id', currentUser.id).then(() => {
@@ -714,8 +717,8 @@ export function useChat() {
 
         console.log('[PIN] Pinning message:', messageId);
 
-        const { error } = await supabase
-            .from('messages')
+        const { error } = await (supabase
+            .from('messages') as any)
             .update({
                 pinned: true,
                 pinned_at: new Date().toISOString(),
@@ -756,8 +759,8 @@ export function useChat() {
     };
 
     const unpinMessage = async (messageId: string) => {
-        const { error } = await supabase
-            .from('messages')
+        const { error } = await (supabase
+            .from('messages') as any)
             .update({
                 pinned: false,
                 pinned_at: null,
@@ -805,12 +808,12 @@ export function useChat() {
 
     // 13. Edit Message
     const editMessage = async (messageId: string, newContent: string) => {
-        const { error } = await supabase
-            .from('messages')
+        const { error } = await (supabase
+            .from('messages') as any)
             .update({
                 content: newContent,
                 edited_at: new Date().toISOString()
-            } as any)
+            })
             .eq('id', messageId);
 
         if (error) {

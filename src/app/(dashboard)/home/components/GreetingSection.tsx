@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
+// Define the profile type for the users table query
+interface UserProfile {
+    username: string | null;
+}
+
 export function GreetingSection() {
     const [greeting, setGreeting] = useState('Good evening');
     const [userName, setUserName] = useState('User');
@@ -21,12 +26,12 @@ export function GreetingSection() {
         const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                // Try to get profile
+                // Try to get profile with explicit typing
                 const { data: profile, error } = await supabase
                     .from('users')
                     .select('username')
                     .eq('id', user.id)
-                    .single();
+                    .single<UserProfile>();
 
                 if (error) {
                     console.error('GreetingSection: Error fetching user profile:', error.message);

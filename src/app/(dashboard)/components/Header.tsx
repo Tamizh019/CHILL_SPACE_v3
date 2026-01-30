@@ -12,7 +12,7 @@ const statuses = [
 export function Header() {
     const [currentStatus, setCurrentStatus] = useState('focusing');
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-    const [userInfo, setUserInfo] = useState<{ username: string; avatar_url: string | null } | null>(null);
+    const [userInfo, setUserInfo] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -110,7 +110,7 @@ export function Header() {
                     {userInfo?.avatar_url ? (
                         <img
                             src={userInfo.avatar_url}
-                            alt={userInfo.username}
+                            alt={userInfo.username || 'User'}
                             className="w-9 h-9 rounded-full object-cover border border-white/10 shadow-[0_0_10px_rgba(139,92,246,0.3)]"
                         />
                     ) : (
