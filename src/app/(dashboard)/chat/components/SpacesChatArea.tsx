@@ -8,6 +8,7 @@ import { JumpToLatest } from './JumpToLatest';
 import { LinkPreview, extractUrls } from './LinkPreview';
 import { PinnedMessagesPanel } from './PinnedMessagesPanel';
 import { UniversalModal } from '@/components/ui/UniversalModal';
+import { ChatDemoModal } from './ChatDemoModal';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'] & {
@@ -19,6 +20,7 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
     pinned_by?: string | null;
     pinned_by_username?: string | null;
     edited_at?: string | null;
+    reply_to_id?: string | null;
 };
 type User = Database['public']['Tables']['users']['Row'];
 
@@ -26,7 +28,7 @@ interface SpacesChatAreaProps {
     currentChannel: Channel | null;
     messages: Message[];
     currentUser: User | null;
-    sendMessage: (content: string) => Promise<void>;
+    sendMessage: (content: string, replyToId?: string) => Promise<void>;
     messagesEndRef: React.RefObject<HTMLDivElement | null>;
     onlineUsers: User[];
     users: User[];
@@ -81,6 +83,7 @@ export function SpacesChatArea({
     const [mentionStartIndex, setMentionStartIndex] = useState(-1);
     const [editingMessage, setEditingMessage] = useState<Message | null>(null);
     const [viewingReaction, setViewingReaction] = useState<{ emoji: string; count: number; usernames: string[] } | null>(null);
+    const [showDemoModal, setShowDemoModal] = useState(false);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -127,8 +130,8 @@ export function SpacesChatArea({
                 setEditingMessage(null);
             }
         } else {
-            // Send new message
-            await sendMessage(inputValue);
+            // Send new message (with reply if applicable)
+            await sendMessage(inputValue, replyingTo?.id);
             setInputValue('');
             setReplyingTo(null);
             scrollToBottom();
@@ -292,7 +295,15 @@ export function SpacesChatArea({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* Pinned Messages Button - Always visible if there are pinned messages */}
+                        {/* Help Button */}
+                        <button
+                            onClick={() => setShowDemoModal(true)}
+                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 hover:bg-violet-500/20 hover:border-violet-500/30 hover:text-violet-400 transition-all"
+                            title="How to use chat"
+                        >
+                            <span className="material-icons-round text-lg">help_outline</span>
+                        </button>
+                        {/* Pinned Messages Button */}
                         <button
                             onClick={() => setShowPinnedPanel(true)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all
@@ -385,140 +396,174 @@ export function SpacesChatArea({
 
                                         {/* Message Bubble with Arrow */}
                                         <div className="relative inline-block">
+                                            {/* Reply Quote - Show if this message is a reply */}
+                                            {msg.reply_to_id && (() => {
+                                                const replyToMsg = messages.find(m => m.id === msg.reply_to_id);
+                                                if (!replyToMsg) return null;
+                                                return (
+                                                    <button
+                                                        onClick={() => {
+                                                            const el = document.getElementById(`msg-${msg.reply_to_id}`);
+                                                            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            el?.classList.add('bg-violet-500/10');
+                                                            setTimeout(() => el?.classList.remove('bg-violet-500/10'), 2000);
+                                                        }}
+                                                        className={`flex items-center gap-2 mb-1.5 text-left max-w-full group/reply
+                                                            ${isCurrentUser ? 'ml-auto' : ''}`}
+                                                    >
+                                                        <div className={`w-0.5 h-6 rounded-full flex-shrink-0 
+                                                            ${isCurrentUser ? 'bg-violet-300/50' : 'bg-slate-500/50'}`} />
+                                                        <div className="min-w-0 overflow-hidden">
+                                                            <span className={`text-[10px] font-medium 
+                                                                ${isCurrentUser ? 'text-violet-200/70' : 'text-slate-400'}`}>
+                                                                ↳ {replyToMsg.username}
+                                                            </span>
+                                                            <p className={`text-[11px] truncate max-w-[200px] 
+                                                                ${isCurrentUser ? 'text-violet-100/50' : 'text-slate-500'}
+                                                                group-hover/reply:text-violet-300 transition-colors`}>
+                                                                {replyToMsg.content?.slice(0, 50)}{(replyToMsg.content?.length || 0) > 50 ? '...' : ''}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })()}
+
                                             {/* The Message */}
-                                            <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed
+                                            <div
+                                                id={`msg-${msg.id}`}
+                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-colors duration-500
                                                 ${isCurrentUser
-                                                    ? 'bg-violet-600 text-white rounded-br-md'
-                                                    : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
-                                                }`}
+                                                        ? 'bg-violet-600 text-white rounded-br-md'
+                                                        : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
+                                                    }`}
                                             >
                                                 {renderMessageContent(msg.content || '')}
                                             </div>
+                                        </div>
 
-                                            {/* Click-only Arrow - No hover glitch */}
-                                            <div
-                                                data-message-menu
-                                                className={`absolute top-1 ${isCurrentUser ? '-left-8' : '-right-8'}
+                                        {/* Click-only Arrow - No hover glitch */}
+                                        <div
+                                            data-message-menu
+                                            className={`absolute top-1 ${isCurrentUser ? '-left-8' : '-right-8'}
                                                             ${activeMessageMenu === msg.id ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}
                                                             transition-opacity duration-150`}
-                                            >
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id);
-                                                    }}
-                                                    className={`w-6 h-6 rounded-full border border-white/10 
+                                        >
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id);
+                                                }}
+                                                className={`w-6 h-6 rounded-full border border-white/10 
                                                                flex items-center justify-center text-slate-400 
                                                                hover:text-white transition-all shadow-lg
                                                                ${activeMessageMenu === msg.id ? 'bg-violet-600 text-white' : 'bg-[#2a2a2a] hover:bg-white/10'}`}
-                                                >
-                                                    <span className={`material-icons-round text-sm transition-transform duration-200 ${activeMessageMenu === msg.id ? 'rotate-180' : ''}`}>expand_more</span>
-                                                </button>
+                                            >
+                                                <span className={`material-icons-round text-sm transition-transform duration-200 ${activeMessageMenu === msg.id ? 'rotate-180' : ''}`}>expand_more</span>
+                                            </button>
 
-                                                {/* Dropdown Menu - Shows above, positioned to stay within container */}
-                                                {activeMessageMenu === msg.id && (
-                                                    <div
-                                                        className={`absolute z-50 bottom-full mb-1 
+                                            {/* Dropdown Menu - Shows above, positioned to stay within container */}
+                                            {activeMessageMenu === msg.id && (
+                                                <div
+                                                    className={`absolute z-50 bottom-full mb-1 
                                                                     ${isCurrentUser ? 'right-0' : 'left-0'}
                                                                     bg-[#1a1a1a] border border-white/10 rounded-xl 
                                                                     shadow-2xl overflow-hidden w-[180px] animate-scale-in`}
-                                                        onClick={e => e.stopPropagation()}
-                                                    >
-                                                        {/* Quick Reactions Row */}
-                                                        <div className="p-2 border-b border-white/5 flex gap-1 justify-center">
-                                                            {REACTION_EMOJIS.map(emoji => {
-                                                                const isActive = (msg as any).reactions?.some((r: any) => r.emoji === emoji && r.userIds.includes(currentUser?.id));
-                                                                return (
-                                                                    <button
-                                                                        key={emoji}
-                                                                        onClick={() => {
-                                                                            addReaction(msg.id, emoji);
-                                                                            setActiveMessageMenu(null);
-                                                                        }}
-                                                                        className={`w-9 h-9 rounded-full 
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    {/* Quick Reactions Row */}
+                                                    <div className="p-2 border-b border-white/5 flex gap-1 justify-center">
+                                                        {REACTION_EMOJIS.map(emoji => {
+                                                            const isActive = (msg as any).reactions?.some((r: any) => r.emoji === emoji && r.userIds.includes(currentUser?.id));
+                                                            return (
+                                                                <button
+                                                                    key={emoji}
+                                                                    onClick={() => {
+                                                                        addReaction(msg.id, emoji);
+                                                                        setActiveMessageMenu(null);
+                                                                    }}
+                                                                    className={`w-9 h-9 rounded-full 
                                                                                    flex items-center justify-center text-xl 
                                                                                    transition-transform hover:scale-125 active:scale-95
                                                                                    ${isActive
-                                                                                ? 'bg-violet-600/20 border border-violet-500 text-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.3)]'
-                                                                                : 'hover:bg-white/10 text-slate-400 hover:text-white'}`}
-                                                                    >
-                                                                        {emoji}
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
+                                                                            ? 'bg-violet-600/20 border border-violet-500 text-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.3)]'
+                                                                            : 'hover:bg-white/10 text-slate-400 hover:text-white'}`}
+                                                                >
+                                                                    {emoji}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
 
-                                                        {/* Menu Actions */}
-                                                        <div className="py-1">
+                                                    {/* Menu Actions */}
+                                                    <div className="py-1">
+                                                        <button
+                                                            onClick={() => {
+                                                                setReplyingTo(msg);
+                                                                setActiveMessageMenu(null);
+                                                            }}
+                                                            className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
+                                                                           hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <span className="material-icons-round text-lg text-slate-400">reply</span>
+                                                            Reply
+                                                        </button>
+
+                                                        {isCurrentUser && (() => {
+                                                            const messageTime = new Date(msg.sent_at || 0);
+                                                            const now = new Date();
+                                                            const minutesAgo = (now.getTime() - messageTime.getTime()) / (1000 * 60);
+                                                            const canEdit = minutesAgo < 4;
+
+                                                            return canEdit && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingMessage(msg);
+                                                                        setInputValue(msg.content || '');
+                                                                        setActiveMessageMenu(null);
+                                                                        inputRef.current?.focus();
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
+                                                                                   hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <span className="material-icons-round text-lg text-slate-400">edit</span>
+                                                                    Edit Message
+                                                                    <span className="ml-auto text-[10px] text-slate-500">
+                                                                        {Math.floor(4 - minutesAgo)}m left
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })()}
+
+                                                        {canPin && (
                                                             <button
                                                                 onClick={() => {
-                                                                    setReplyingTo(msg);
+                                                                    msg.pinned ? unpinMessage(msg.id) : pinMessage(msg.id);
                                                                     setActiveMessageMenu(null);
                                                                 }}
                                                                 className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
-                                                                           hover:bg-white/5 flex items-center gap-3 transition-colors"
-                                                            >
-                                                                <span className="material-icons-round text-lg text-slate-400">reply</span>
-                                                                Reply
-                                                            </button>
-
-                                                            {isCurrentUser && (() => {
-                                                                const messageTime = new Date(msg.sent_at || 0);
-                                                                const now = new Date();
-                                                                const minutesAgo = (now.getTime() - messageTime.getTime()) / (1000 * 60);
-                                                                const canEdit = minutesAgo < 4;
-
-                                                                return canEdit && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setEditingMessage(msg);
-                                                                            setInputValue(msg.content || '');
-                                                                            setActiveMessageMenu(null);
-                                                                            inputRef.current?.focus();
-                                                                        }}
-                                                                        className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
-                                                                                   hover:bg-white/5 flex items-center gap-3 transition-colors"
-                                                                    >
-                                                                        <span className="material-icons-round text-lg text-slate-400">edit</span>
-                                                                        Edit Message
-                                                                        <span className="ml-auto text-[10px] text-slate-500">
-                                                                            {Math.floor(4 - minutesAgo)}m left
-                                                                        </span>
-                                                                    </button>
-                                                                );
-                                                            })()}
-
-                                                            {canPin && (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        msg.pinned ? unpinMessage(msg.id) : pinMessage(msg.id);
-                                                                        setActiveMessageMenu(null);
-                                                                    }}
-                                                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
                                                                                hover:bg-white/5 flex items-center gap-3 transition-colors"
-                                                                >
-                                                                    <span className={`material-icons-round text-lg ${msg.pinned ? 'text-yellow-500' : 'text-slate-400'}`}>push_pin</span>
-                                                                    {msg.pinned ? 'Unpin Message' : 'Pin Message'}
-                                                                </button>
-                                                            )}
+                                                            >
+                                                                <span className={`material-icons-round text-lg ${msg.pinned ? 'text-yellow-500' : 'text-slate-400'}`}>push_pin</span>
+                                                                {msg.pinned ? 'Unpin Message' : 'Pin Message'}
+                                                            </button>
+                                                        )}
 
-                                                            {canDelete && (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setDeleteConfirmId(msg.id);
-                                                                        setActiveMessageMenu(null);
-                                                                    }}
-                                                                    className="w-full px-4 py-2.5 text-left text-sm text-red-400 
+                                                        {canDelete && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setDeleteConfirmId(msg.id);
+                                                                    setActiveMessageMenu(null);
+                                                                }}
+                                                                className="w-full px-4 py-2.5 text-left text-sm text-red-400 
                                                                                hover:bg-red-500/10 flex items-center gap-3 transition-colors"
-                                                                >
-                                                                    <span className="material-icons-round text-lg">delete</span>
-                                                                    Delete Message
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                            >
+                                                                <span className="material-icons-round text-lg">delete</span>
+                                                                Delete Message
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Link Previews */}
@@ -666,9 +711,18 @@ export function SpacesChatArea({
                                 <span className="material-icons-round text-lg">send</span>
                             </button>
                         </div>
-                        <p className="text-center text-[10px] text-slate-600 mt-2">
-                            <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">```</span> for code • <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">@</span> to mention
-                        </p>
+                        <div className="flex items-center justify-between mt-2 px-1">
+                            <p className="text-[10px] text-slate-600">
+                                <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">```</span> for code • <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">@</span> to mention • Markdown supported
+                            </p>
+                            <button
+                                onClick={() => setShowDemoModal(true)}
+                                className="text-[10px] text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1.5 hover:underline decoration-violet-400/30 underline-offset-2"
+                            >
+                                <span className="material-icons-round text-sm">help_outline</span>
+                                Have doubts on chat? Check the demo
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -705,52 +759,57 @@ export function SpacesChatArea({
             />
 
             {/* Reaction Users Modal */}
-            {viewingReaction && (
-                <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
-                    onClick={() => setViewingReaction(null)}
-                >
+            {
+                viewingReaction && (
                     <div
-                        className="bg-[#1a1a1a] border border-white/10 rounded-xl p-4 min-w-[240px] max-w-sm shadow-2xl animate-scale-in"
-                        onClick={e => e.stopPropagation()}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+                        onClick={() => setViewingReaction(null)}
                     >
-                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
-                            <div className="flex items-center gap-2">
-                                <span className="text-2xl">{viewingReaction.emoji}</span>
-                                <div>
-                                    <h3 className="font-bold text-white text-sm">Reactions</h3>
-                                    <p className="text-[10px] text-slate-400">{viewingReaction.count} people reacted</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setViewingReaction(null)}
-                                className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                            >
-                                <span className="material-icons-round text-sm">close</span>
-                            </button>
-                        </div>
-                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                            {viewingReaction.usernames?.length > 0 ? (
-                                viewingReaction.usernames.map((name, i) => (
-                                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center text-xs font-bold text-violet-300 ring-1 ring-violet-500/30">
-                                            {name[0].toUpperCase()}
-                                        </div>
-                                        <span className="text-sm text-slate-200 font-medium">{name}</span>
+                        <div
+                            className="bg-[#1a1a1a] border border-white/10 rounded-xl p-4 min-w-[240px] max-w-sm shadow-2xl animate-scale-in"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl">{viewingReaction.emoji}</span>
+                                    <div>
+                                        <h3 className="font-bold text-white text-sm">Reactions</h3>
+                                        <p className="text-[10px] text-slate-400">{viewingReaction.count} people reacted</p>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-4 text-slate-500 text-xs">
-                                    Loading users...
                                 </div>
-                            )}
+                                <button
+                                    onClick={() => setViewingReaction(null)}
+                                    className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <span className="material-icons-round text-sm">close</span>
+                                </button>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                {viewingReaction.usernames?.length > 0 ? (
+                                    viewingReaction.usernames.map((name, i) => (
+                                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center text-xs font-bold text-violet-300 ring-1 ring-violet-500/30">
+                                                {name[0].toUpperCase()}
+                                            </div>
+                                            <span className="text-sm text-slate-200 font-medium">{name}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-4 text-slate-500 text-xs">
+                                        Loading users...
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Online Users Sidebar */}
             <OnlineUsersList onlineUsers={onlineUsers} currentUserId={currentUser?.id || null} />
+
+            {/* Chat Demo Modal */}
+            <ChatDemoModal isOpen={showDemoModal} onClose={() => setShowDemoModal(false)} />
         </div>
     );
 }

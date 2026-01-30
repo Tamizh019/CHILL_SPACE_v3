@@ -286,8 +286,8 @@ export function useChat() {
         };
     }, [currentChannel, recipient]);
 
-    // 5. Send Message Function
-    const sendMessage = async (content: string) => {
+    // 5. Send Message Function (with reply support)
+    const sendMessage = async (content: string, replyToId?: string) => {
         if (!currentChannel || !currentUser || !content.trim()) return;
 
         // Handle Announcements
@@ -326,7 +326,8 @@ export function useChat() {
                 channel_id: currentChannel.id,
                 user_id: currentUser.id,
                 username: currentUser.username,
-                sent_at: new Date().toISOString()
+                sent_at: new Date().toISOString(),
+                reply_to_id: replyToId || null
             } as any);
 
         if (error) {
@@ -341,6 +342,7 @@ export function useChat() {
                 user_id: currentUser.id,
                 username: currentUser.username,
                 sent_at: new Date().toISOString(),
+                reply_to_id: replyToId || null,
                 users: {
                     avatar_url: currentUser.avatar_url,
                     role: currentUser.role

@@ -17,7 +17,7 @@ export function ServerStats() {
         mostActiveChannel: '#general',
         avgResponseTime: '< 1 min'
     });
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
     const supabase = createClient();
@@ -103,16 +103,17 @@ export function ServerStats() {
     };
 
     return (
-        <div className="mt-4">
-            {/* Header with toggle */}
+        <div>
+            {/* Header with toggle - matching OnlineUsersList header style */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="w-full flex items-center justify-between text-xs font-semibold 
-                           text-slate-400 uppercase tracking-wider px-3 py-2 
-                           hover:text-white transition-colors group"
+                className="w-full h-12 flex items-center justify-between px-4 
+                           hover:bg-white/5 transition-colors group"
             >
-                <span>Server Stats</span>
-                <span className={`material-icons-round text-sm transition-transform duration-200 
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Server Stats
+                </h3>
+                <span className={`material-icons-round text-sm text-slate-500 group-hover:text-white transition-all duration-200 
                                   ${isCollapsed ? '' : 'rotate-180'}`}>
                     expand_more
                 </span>
@@ -120,7 +121,7 @@ export function ServerStats() {
 
             {/* Stats content */}
             {!isCollapsed && (
-                <div className="px-3 py-2 space-y-3 animate-fade-in">
+                <div className="px-4 py-3 space-y-2.5">
                     {isLoading ? (
                         <div className="text-slate-500 text-sm text-center py-3">
                             Loading stats...
@@ -128,54 +129,54 @@ export function ServerStats() {
                     ) : (
                         <>
                             {/* Total Members */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-base">👥</span>
-                                    <span className="text-slate-400 text-sm">Total Members</span>
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center gap-2.5">
+                                    <span className="text-sm">👥</span>
+                                    <span className="text-slate-400 text-xs">Total Members</span>
                                 </div>
-                                <span className="text-white font-semibold text-sm">
+                                <span className="text-white font-semibold text-xs">
                                     {formatNumber(stats.totalMembers)}
                                 </span>
                             </div>
 
                             {/* Messages Today */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-base">💬</span>
-                                    <span className="text-slate-400 text-sm">Messages Today</span>
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center gap-2.5">
+                                    <span className="text-sm">💬</span>
+                                    <span className="text-slate-400 text-xs">Messages Today</span>
                                 </div>
-                                <span className="text-white font-semibold text-sm">
+                                <span className="text-white font-semibold text-xs">
                                     {formatNumber(stats.messagesToday)}
                                 </span>
                             </div>
 
                             {/* Most Active */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-base">🔥</span>
-                                    <span className="text-slate-400 text-sm">Most Active</span>
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center gap-2.5">
+                                    <span className="text-sm">🔥</span>
+                                    <span className="text-slate-400 text-xs">Most Active</span>
                                 </div>
-                                <span className="text-violet-400 font-semibold text-sm">
+                                <span className="text-violet-400 font-semibold text-xs">
                                     {stats.mostActiveChannel}
                                 </span>
                             </div>
 
                             {/* Avg Response */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-base">⏱️</span>
-                                    <span className="text-slate-400 text-sm">Avg Response</span>
+                            <div className="flex items-center justify-between py-1">
+                                <div className="flex items-center gap-2.5">
+                                    <span className="text-sm">⏱️</span>
+                                    <span className="text-slate-400 text-xs">Avg Response</span>
                                 </div>
-                                <span className="text-green-400 font-semibold text-sm">
+                                <span className="text-green-400 font-semibold text-xs">
                                     {stats.avgResponseTime}
                                 </span>
                             </div>
 
-                            {/* Divider line */}
-                            <div className="border-t border-white/5 pt-2 mt-2">
-                                <div className="text-[10px] text-slate-500 text-center">
+                            {/* Footer note */}
+                            <div className="pt-2 mt-1 border-t border-white/5">
+                                <p className="text-[10px] text-slate-600 text-center">
                                     Updates every 30 seconds
-                                </div>
+                                </p>
                             </div>
                         </>
                     )}

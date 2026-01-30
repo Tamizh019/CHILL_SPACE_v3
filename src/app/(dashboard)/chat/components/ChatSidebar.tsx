@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { SpacesList } from './SpacesList';
 import { DirectMessagesList } from './DirectMessagesList';
 import { Database } from '@/types/supabase';
@@ -15,7 +16,17 @@ interface ChatSidebarProps {
     users: User[];
 }
 
+const COMMUNITY_RULES = [
+    { icon: '✅', text: 'Be respectful' },
+    { icon: '✅', text: 'No inappropriate language' },
+    { icon: '✅', text: 'No spam' },
+    { icon: '✅', text: 'Help each other' },
+    { icon: '✅', text: 'Use proper channels' },
+];
+
 export function ChatSidebar({ activeTab, onTabChange, selectedChat, onSelectChat, channels, users }: ChatSidebarProps) {
+    const [rulesExpanded, setRulesExpanded] = useState(false);
+
     return (
         <div className="w-80 border-r border-white/5 bg-black/20 flex flex-col">
             {/* Header */}
@@ -64,7 +75,38 @@ export function ChatSidebar({ activeTab, onTabChange, selectedChat, onSelectChat
                 )}
             </div>
 
+            {/* Community Rules */}
+            <div className="border-t border-white/5 bg-black/10">
+                <button
+                    onClick={() => setRulesExpanded(!rulesExpanded)}
+                    className="w-full h-12 flex items-center justify-between px-4 hover:bg-white/5 transition-colors group"
+                >
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <span className="text-sm">📜</span>
+                        Community Rules
+                    </h3>
+                    <span className={`material-icons-round text-sm text-slate-500 group-hover:text-white transition-all duration-200 
+                                      ${rulesExpanded ? 'rotate-180' : ''}`}>
+                        expand_more
+                    </span>
+                </button>
 
+                {rulesExpanded && (
+                    <div className="px-4 pb-4 space-y-2 animate-fade-in">
+                        {COMMUNITY_RULES.map((rule, index) => (
+                            <div key={index} className="flex items-center gap-2.5 text-xs">
+                                <span>{rule.icon}</span>
+                                <span className="text-slate-400">{rule.text}</span>
+                            </div>
+                        ))}
+                        <div className="pt-2 mt-2 border-t border-white/5">
+                            <p className="text-[10px] text-slate-600 text-center">
+                                Respect our community guidelines 💜
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
