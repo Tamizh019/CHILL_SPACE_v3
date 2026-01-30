@@ -4,12 +4,14 @@
 > **Your all-in-one collaboration hub.**  
 > *Connect your crew. Collaborate on projects. Play games. Chill together.*
 
+> 🔴 **Live Demo**: [Check out the progress](https://chill-space.netlify.app/) *(Backend Integration Coming Soon)*
+
 ---
 
 > [!IMPORTANT]
 > **CURRENTLY UNDER ACTIVE DEVELOPMENT**
 >
-> I am currently working on refining the core UI/UX and building out the authentication flows. The backend integration and real-time features are next on the roadmap.
+> I am currently working Core UI/UX and polishing is ongoing. Auth + real-time chat are completed. Next milestone is integrating core Rust backend services for performance and advanced features.
 
 ---
 
