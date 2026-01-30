@@ -2,7 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase';
 
-type Message = Database['public']['Tables']['messages']['Row'];
+// Extended Message type to include joined user data from queries
+type Message = Database['public']['Tables']['messages']['Row'] & {
+    users: {
+        avatar_url: string | null;
+        role: string | null;
+    } | null;
+};
 type Channel = Database['public']['Tables']['channels']['Row'];
 type User = Database['public']['Tables']['users']['Row'];
 
@@ -44,7 +50,8 @@ export function useChat() {
                 .order('name');
 
             if (error) {
-                console.error('Error fetching channels:', error);
+                console.error('Error fetching channels:', error.message, error.details, error.hint);
+                console.log('Full error object:', JSON.stringify(error, null, 2));
             } else if (data) {
                 // Inject Announcements Channel
                 const announcements: any = {

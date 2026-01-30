@@ -19,16 +19,19 @@ export function Header() {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data: profile } = await supabase
+                const { data: profile, error } = await supabase
                     .from('users')
                     .select('username, avatar_url')
                     .eq('id', user.id)
                     .single();
 
-                if (profile) {
+                if (error) {
+                    console.error('Header: Error fetching user profile:', error.message);
+                    setUserInfo({ username: user.email?.split('@')[0] || 'User', avatar_url: null });
+                } else if (profile) {
                     setUserInfo(profile);
                 } else {
-                    // Fallback using email if profile missing (though ideally should exist)
+                    // Fallback using email if profile missing
                     setUserInfo({ username: user.email?.split('@')[0] || 'User', avatar_url: null });
                 }
             }

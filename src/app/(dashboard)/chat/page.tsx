@@ -31,9 +31,7 @@ export default function ChatPage() {
             }
         }
     }, [searchParams, users, setRecipient, router]);
-
-    // Handler to switch channels based on ID
-
+    
     // Handler to switch channels based on ID
     const handleSelectChat = (id: string) => {
         if (activeTab === 'spaces') {
