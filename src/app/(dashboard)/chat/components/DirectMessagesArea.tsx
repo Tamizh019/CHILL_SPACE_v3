@@ -16,7 +16,7 @@ interface DirectMessagesAreaProps {
     messages: Message[];
     currentUser: User | null;
     sendMessage: (content: string) => Promise<void>;
-    messagesEndRef: React.RefObject<HTMLDivElement>;
+    messagesEndRef: React.RefObject<HTMLDivElement | null>;
     selectedChat?: null; // Legacy prop, can ignore or remove
 }
 

@@ -15,7 +15,20 @@ export default function ChatPage() {
         channels, currentChannel, setCurrentChannel,
         users, recipient, setRecipient,
         messages, sendMessage, sendDirectMessage,
-        currentUser, messagesEndRef
+        currentUser, messagesEndRef, onlineUsers,
+        // New features
+        typingUsers,
+        broadcastTyping,
+        replyingTo,
+        setReplyingTo,
+        pinnedMessages,
+        canDeleteMessage,
+        deleteMessage,
+        addReaction,
+        removeReaction,
+        pinMessage,
+        unpinMessage,
+        editMessage
     } = useChat();
 
     // Deep Link Logic
@@ -31,8 +44,6 @@ export default function ChatPage() {
             }
         }
     }, [searchParams, users, setRecipient, router]);
-
-    // Handler to switch channels based on ID
 
     // Handler to switch channels based on ID
     const handleSelectChat = (id: string) => {
@@ -71,6 +82,21 @@ export default function ChatPage() {
                     currentUser={currentUser}
                     sendMessage={sendMessage}
                     messagesEndRef={messagesEndRef}
+                    onlineUsers={onlineUsers}
+                    users={users}
+                    // New feature props
+                    typingUsers={typingUsers}
+                    broadcastTyping={broadcastTyping}
+                    replyingTo={replyingTo}
+                    setReplyingTo={setReplyingTo}
+                    pinnedMessages={pinnedMessages}
+                    canDeleteMessage={canDeleteMessage}
+                    deleteMessage={deleteMessage}
+                    addReaction={addReaction}
+                    removeReaction={removeReaction}
+                    pinMessage={pinMessage}
+                    unpinMessage={unpinMessage}
+                    editMessage={editMessage}
                 />
             ) : (
                 <DirectMessagesArea

@@ -22,14 +22,16 @@ export function GreetingSection() {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 // Try to get profile
-                const { data: profile } = await supabase
+                const { data: profile, error } = await supabase
                     .from('users')
                     .select('username')
                     .eq('id', user.id)
                     .single();
 
-                // Prioritize username
-                if (profile?.username) {
+                if (error) {
+                    console.error('GreetingSection: Error fetching user profile:', error.message);
+                    setUserName(user.email?.split('@')[0] || 'User');
+                } else if (profile?.username) {
                     setUserName(profile.username);
                 } else {
                     setUserName(user.email?.split('@')[0] || 'User');

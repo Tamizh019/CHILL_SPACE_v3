@@ -2,62 +2,124 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
+interface RecentChat {
+    id: string;
+    name: string;
+    avatar: string | null;
+    lastMessage: string;
+    sentAt: Date;
+    isOnline: boolean;
+    lastSeen: Date | null;
+}
+
 export function RightSidebar() {
-    const [recentChats, setRecentChats] = useState<any[]>([]);
+    const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
     const supabase = createClient();
 
     useEffect(() => {
         const fetchRecentChats = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    setIsLoading(false);
+                    return;
+                }
 
-            // Fetch messages involving the user
-            const { data: messages, error } = await supabase
-                .from('messages')
-                .select(`
-                    id,
-                    content,
-                    sent_at,
-                    user_id,
-                    recipient_id,
-                    sender:user_id ( id, username, avatar_url ),
-                    recipient:recipient_id ( id, username, avatar_url )
-                `)
-                .or(`user_id.eq.${user.id},recipient_id.eq.${user.id}`)
-                .not('recipient_id', 'is', null) // Only DMs
-                .order('sent_at', { ascending: false })
-                .limit(50); // Fetch enough to find distinct chats
+                // Step 1: Fetch recent DM messages (messages with recipient_id)
+                const { data: messages, error: msgError } = await supabase
+                    .from('messages')
+                    .select('id, content, sent_at, user_id, recipient_id')
+                    .or(`user_id.eq.${user.id},recipient_id.eq.${user.id}`)
+                    .not('recipient_id', 'is', null)
+                    .order('sent_at', { ascending: false })
+                    .limit(50);
 
-            if (messages) {
-                const chatsMap = new Map();
+                if (msgError) {
+                    console.error('RightSidebar: Error fetching messages:', msgError.message);
+                    setIsLoading(false);
+                    return;
+                }
 
-                messages.forEach((msg: any) => {
-                    // Determine who the other person is
-                    const isMe = msg.user_id === user.id;
-                    const partner = isMe ? msg.recipient : msg.sender;
+                if (!messages || messages.length === 0) {
+                    setIsLoading(false);
+                    return;
+                }
 
-                    if (!partner) return;
-
-                    if (!chatsMap.has(partner.id)) {
-                        chatsMap.set(partner.id, {
-                            id: partner.id,
-                            name: partner.username || 'User',
-                            avatar: partner.avatar_url,
+                // Step 2: Extract unique chat partner IDs
+                const partnerMap = new Map<string, { lastMessage: string; sentAt: Date }>();
+                messages.forEach((msg) => {
+                    const partnerId = msg.user_id === user.id ? msg.recipient_id : msg.user_id;
+                    if (partnerId && !partnerMap.has(partnerId)) {
+                        partnerMap.set(partnerId, {
                             lastMessage: msg.content,
                             sentAt: new Date(msg.sent_at),
                         });
                     }
                 });
 
-                setRecentChats(Array.from(chatsMap.values()));
+                const partnerIds = Array.from(partnerMap.keys()).slice(0, 4); // Limit to 4 recent chats
+
+                if (partnerIds.length === 0) {
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Step 3: Fetch user details for partners
+                const { data: users, error: userError } = await supabase
+                    .from('users')
+                    .select('id, username, avatar_url')
+                    .in('id', partnerIds);
+
+                if (userError) {
+                    console.error('RightSidebar: Error fetching users:', userError.message);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Step 4: Fetch online status from online_members table
+                const { data: onlineData } = await supabase
+                    .from('online_members')
+                    .select('user_id, last_seen, is_online')
+                    .in('user_id', partnerIds);
+
+                const onlineMap = new Map<string, { isOnline: boolean; lastSeen: Date | null }>();
+                onlineData?.forEach((member) => {
+                    onlineMap.set(member.user_id, {
+                        isOnline: member.is_online,
+                        lastSeen: member.last_seen ? new Date(member.last_seen) : null,
+                    });
+                });
+
+                // Step 5: Build the recent chats array
+                const chats: RecentChat[] = users?.map((u) => {
+                    const msgData = partnerMap.get(u.id);
+                    const onlineStatus = onlineMap.get(u.id);
+                    return {
+                        id: u.id,
+                        name: u.username || 'User',
+                        avatar: u.avatar_url,
+                        lastMessage: msgData?.lastMessage || '',
+                        sentAt: msgData?.sentAt || new Date(),
+                        isOnline: onlineStatus?.isOnline || false,
+                        lastSeen: onlineStatus?.lastSeen || null,
+                    };
+                }) || [];
+
+                // Sort by most recent message
+                chats.sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+                setRecentChats(chats);
+            } catch (err) {
+                console.error('RightSidebar: Unexpected error:', err);
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         fetchRecentChats();
     }, []);
+
 
     const formatTimeAgo = (date: Date) => {
         const now = new Date();
@@ -109,38 +171,55 @@ export function RightSidebar() {
                     ) : recentChats.length === 0 ? (
                         <p className="text-xs text-slate-500 italic">No recent chats</p>
                     ) : (
-                        recentChats.map((chat) => (
-                            <div
-                                key={chat.id}
-                                className="flex items-center gap-3 cursor-pointer group"
-                                onClick={() => router.push(`/chat?userId=${chat.id}`)} // This query param needs handling in Chat page or just /chat for now
-                            >
-                                <div className="relative">
-                                    {chat.avatar ? (
-                                        <img
-                                            alt={chat.name}
-                                            className="w-9 h-9 rounded-full grayscale group-hover:grayscale-0 transition-all object-cover"
-                                            src={chat.avatar}
-                                        />
-                                    ) : (
-                                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
-                                            {chat.name[0]}
-                                        </div>
-                                    )}
-                                    {/* Status Dot (Fake for now, or based on recency) */}
-                                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-slate-600 border-2 border-black rounded-full" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-baseline">
-                                        <p className="text-sm font-medium truncate text-white">{chat.name}</p>
-                                        <span className="text-[10px] text-slate-600 ml-2 whitespace-nowrap">{formatTimeAgo(chat.sentAt)}</span>
+                        recentChats.map((chat) => {
+                            // Consider online only if lastSeen is within last 5 minutes
+                            const isRecentlyOnline = chat.lastSeen &&
+                                (new Date().getTime() - chat.lastSeen.getTime()) < 5 * 60 * 1000;
+
+                            return (
+                                <div
+                                    key={chat.id}
+                                    className="flex items-center gap-3 cursor-pointer group py-2 hover:bg-white/[0.03] -mx-2 px-2 rounded-lg transition-colors"
+                                    onClick={() => router.push(`/chat?userId=${chat.id}`)}
+                                >
+                                    {/* Avatar with status dot */}
+                                    <div className="relative flex-shrink-0">
+                                        {chat.avatar ? (
+                                            <img
+                                                alt={chat.name}
+                                                className="w-10 h-10 rounded-full object-cover"
+                                                src={chat.avatar}
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600/80 to-purple-700/80 flex items-center justify-center text-sm font-semibold text-white">
+                                                {chat.name[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                        {/* Simple online dot */}
+                                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0d0d0d] ${isRecentlyOnline ? 'bg-green-500' : 'bg-slate-600'
+                                            }`} />
                                     </div>
-                                    <p className="text-xs text-slate-500 truncate group-hover:text-slate-400 transition-colors">
-                                        {chat.lastMessage}
-                                    </p>
+
+                                    {/* Chat info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">
+                                                {chat.name}
+                                            </p>
+                                            <span className="text-[10px] text-slate-600 whitespace-nowrap">
+                                                {formatTimeAgo(chat.sentAt)}
+                                            </span>
+                                        </div>
+                                        <p className={`text-xs truncate mt-0.5 ${isRecentlyOnline
+                                                ? 'text-green-500'
+                                                : 'text-slate-500 group-hover:text-slate-400'
+                                            }`}>
+                                            {isRecentlyOnline ? 'Active Now' : (chat.lastMessage || 'No messages')}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>

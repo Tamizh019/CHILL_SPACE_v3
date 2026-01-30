@@ -2,7 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase';
 
-type Message = Database['public']['Tables']['messages']['Row'];
+// Extended Message type to include joined user data from queries
+type Message = Database['public']['Tables']['messages']['Row'] & {
+    users: {
+        avatar_url: string | null;
+        role: string | null;
+    } | null;
+};
 type Channel = Database['public']['Tables']['channels']['Row'];
 type User = Database['public']['Tables']['users']['Row'];
 
@@ -18,6 +24,19 @@ export function useChat() {
     // State for Direct Messages
     const [users, setUsers] = useState<User[]>([]);
     const [recipient, setRecipient] = useState<User | null>(null);
+
+    // State for Online Users (Presence)
+    const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+
+    // State for Typing Indicators
+    const [typingUsers, setTypingUsers] = useState<string[]>([]);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // State for Reply
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+    // State for Pinned Messages
+    const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
 
     // 1. Fetch Current User
     useEffect(() => {
@@ -44,7 +63,8 @@ export function useChat() {
                 .order('name');
 
             if (error) {
-                console.error('Error fetching channels:', error);
+                console.error('Error fetching channels:', error.message, error.details, error.hint);
+                console.log('Full error object:', JSON.stringify(error, null, 2));
             } else if (data) {
                 // Inject Announcements Channel
                 const announcements: any = {
@@ -147,9 +167,47 @@ export function useChat() {
 
             if (error) {
                 console.error('Error fetching messages:', error);
-            } else {
-                setMessages(data as any); // Type cast needed due to join
+                setIsLoading(false);
+                return;
             }
+
+            // Fetch reactions for all messages
+            const messageIds = data.map((m: any) => m.id);
+            const { data: reactionsData } = await supabase
+                .from('message_reactions')
+                .select('*, users:user_id (username)')
+                .in('message_id', messageIds);
+
+            // Group reactions by message and emoji
+            const reactionsMap: { [key: string]: any[] } = {};
+            if (reactionsData) {
+                reactionsData.forEach((r: any) => {
+                    const key = r.message_id;
+                    if (!reactionsMap[key]) reactionsMap[key] = [];
+
+                    const existing = reactionsMap[key].find((x: any) => x.emoji === r.emoji);
+                    if (existing) {
+                        existing.count++;
+                        existing.userIds.push(r.user_id);
+                        existing.usernames.push(r.users?.username || 'Unknown');
+                    } else {
+                        reactionsMap[key].push({
+                            emoji: r.emoji,
+                            count: 1,
+                            userIds: [r.user_id],
+                            usernames: [r.users?.username || 'Unknown']
+                        });
+                    }
+                });
+            }
+
+            // Merge reactions into messages
+            const messagesWithReactions = data.map((m: any) => ({
+                ...m,
+                reactions: reactionsMap[m.id] || []
+            }));
+
+            setMessages(messagesWithReactions as any);
             setIsLoading(false);
         };
 
@@ -266,6 +324,29 @@ export function useChat() {
 
         if (error) {
             console.error('Error sending message:', error);
+        } else {
+            // Optimistic update - add message immediately to local state
+            // Real-time subscription will also fire, but we deduplicate in handleNewMessage
+            const optimisticMsg: any = {
+                id: `temp-${Date.now()}`, // Temporary ID until real-time updates with real ID
+                content,
+                channel_id: currentChannel.id,
+                user_id: currentUser.id,
+                username: currentUser.username,
+                sent_at: new Date().toISOString(),
+                users: {
+                    avatar_url: currentUser.avatar_url,
+                    role: currentUser.role
+                }
+            };
+            setMessages(prev => {
+                // Avoid adding if realtime already added it
+                if (prev.find(m => m.content === content && m.user_id === currentUser.id &&
+                    Math.abs(new Date(m.sent_at || 0).getTime() - Date.now()) < 2000)) {
+                    return prev;
+                }
+                return [...prev, optimisticMsg];
+            });
         }
     };
 
@@ -367,18 +448,407 @@ export function useChat() {
         if (error) console.error('Error sending DM:', error);
     };
 
+    // 8. Presence Tracking (Online Users)
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const presenceChannel = supabase.channel('online-users', {
+            config: {
+                presence: {
+                    key: currentUser.id,
+                },
+            },
+        });
+
+        // Track presence state and sync to onlineUsers
+        presenceChannel
+            .on('presence', { event: 'sync' }, () => {
+                const state = presenceChannel.presenceState();
+                const onlineUserIds = Object.keys(state);
+
+                // Fetch user details for all online users
+                if (onlineUserIds.length > 0) {
+                    supabase
+                        .from('users')
+                        .select('*')
+                        .in('id', onlineUserIds)
+                        .then(({ data }) => {
+                            if (data) setOnlineUsers(data);
+                        });
+                } else {
+                    setOnlineUsers([]);
+                }
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    // Track this user as online
+                    await presenceChannel.track({
+                        user_id: currentUser.id,
+                        username: currentUser.username,
+                        online_at: new Date().toISOString(),
+                    });
+
+                    // Update online_members table
+                    await supabase.from('online_members').upsert({
+                        user_id: currentUser.id,
+                        username: currentUser.username,
+                        is_online: true,
+                        last_seen: new Date().toISOString(),
+                    });
+                }
+            });
+
+        // Cleanup: Mark user as offline when leaving
+        return () => {
+            supabase.from('online_members').update({
+                is_online: false,
+                last_seen: new Date().toISOString(),
+            }).eq('user_id', currentUser.id).then(() => {
+                supabase.removeChannel(presenceChannel);
+            });
+        };
+    }, [currentUser]);
+
+    // 9. Typing Indicator Functions
+    const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+    // Subscribe to typing events
+    useEffect(() => {
+        if (!currentChannel || recipient) return;
+
+        const channelName = `typing:${currentChannel.id}`;
+        const typingChannel = supabase.channel(channelName)
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                if (payload.userId !== currentUser?.id) {
+                    setTypingUsers(prev => {
+                        if (!prev.includes(payload.username)) {
+                            return [...prev, payload.username];
+                        }
+                        return prev;
+                    });
+
+                    // Auto-remove after 3 seconds if no stop event
+                    setTimeout(() => {
+                        setTypingUsers(prev => prev.filter(u => u !== payload.username));
+                    }, 3000);
+                }
+            })
+            .on('broadcast', { event: 'stop_typing' }, ({ payload }) => {
+                setTypingUsers(prev => prev.filter(u => u !== payload.username));
+            })
+            .subscribe();
+
+        typingChannelRef.current = typingChannel;
+
+        return () => {
+            supabase.removeChannel(typingChannel);
+            typingChannelRef.current = null;
+            setTypingUsers([]);
+        };
+    }, [currentChannel, recipient, currentUser?.id]);
+
+    const broadcastTyping = useCallback(() => {
+        if (!typingChannelRef.current || !currentUser) return;
+
+        typingChannelRef.current.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: { username: currentUser.username, userId: currentUser.id }
+        });
+
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        // Set new timeout to stop typing after 2 seconds
+        typingTimeoutRef.current = setTimeout(() => {
+            if (typingChannelRef.current) {
+                typingChannelRef.current.send({
+                    type: 'broadcast',
+                    event: 'stop_typing',
+                    payload: { userId: currentUser.id, username: currentUser.username }
+                });
+            }
+        }, 2000);
+    }, [currentUser]);
+
+    // 10. Role-Based Message Deletion
+    const canDeleteMessage = useCallback((messageUserId: string, messageAuthorRole: string | null) => {
+        if (!currentUser) return false;
+
+        const roleHierarchy: { [key: string]: number } = { admin: 3, moderator: 2, user: 1 };
+        const currentRole = roleHierarchy[currentUser.role || 'user'] || 1;
+        const authorRole = roleHierarchy[messageAuthorRole || 'user'] || 1;
+
+        // Admin: can delete anyone's messages
+        if (currentUser.role === 'admin') return true;
+
+        // Moderator: can delete user messages only (not admin)
+        if (currentUser.role === 'moderator' && authorRole < 2) return true;
+
+        // User: can only delete own messages
+        return messageUserId === currentUser.id;
+    }, [currentUser]);
+
+    const deleteMessage = async (messageId: string) => {
+        const { error } = await supabase
+            .from('messages')
+            .delete()
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('Error deleting message:', error);
+            return false;
+        }
+
+        // Optimistic update
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        return true;
+    };
+
+    // 11. Message Reactions - Toggle behavior (add if not reacted, remove if already reacted)
+    const toggleReaction = async (messageId: string, emoji: string) => {
+        if (!currentUser) return;
+
+        // Check if user already reacted with this emoji
+        const message = messages.find(m => m.id === messageId);
+        const reactions = (message as any)?.reactions || [];
+        const existingReaction = reactions.find((r: any) => r.emoji === emoji);
+        const hasReacted = existingReaction?.userIds?.includes(currentUser.id);
+
+        if (hasReacted) {
+            // Remove reaction
+            setMessages(prev => prev.map(m => {
+                if (m.id === messageId) {
+                    const currentReactions = (m as any).reactions || [];
+                    return {
+                        ...m,
+                        reactions: currentReactions
+                            .map((r: any) =>
+                                r.emoji === emoji
+                                    ? {
+                                        ...r,
+                                        count: r.count - 1,
+                                        userIds: r.userIds.filter((id: string) => id !== currentUser.id),
+                                        usernames: r.usernames?.filter((_: string, i: number) => r.userIds[i] !== currentUser.id) || []
+                                    }
+                                    : r
+                            )
+                            .filter((r: any) => r.count > 0)
+                    };
+                }
+                return m;
+            }));
+
+            await supabase
+                .from('message_reactions')
+                .delete()
+                .eq('message_id', messageId)
+                .eq('user_id', currentUser.id)
+                .eq('emoji', emoji);
+        } else {
+            // Add reaction
+            setMessages(prev => prev.map(m => {
+                if (m.id === messageId) {
+                    const currentReactions = (m as any).reactions || [];
+                    const existing = currentReactions.find((r: any) => r.emoji === emoji);
+
+                    if (existing) {
+                        return {
+                            ...m,
+                            reactions: currentReactions.map((r: any) =>
+                                r.emoji === emoji
+                                    ? {
+                                        ...r,
+                                        count: r.count + 1,
+                                        userIds: [...r.userIds, currentUser.id],
+                                        usernames: [...(r.usernames || []), currentUser.username]
+                                    }
+                                    : r
+                            )
+                        };
+                    } else {
+                        return {
+                            ...m,
+                            reactions: [...currentReactions, {
+                                emoji,
+                                count: 1,
+                                userIds: [currentUser.id],
+                                usernames: [currentUser.username]
+                            }]
+                        };
+                    }
+                }
+                return m;
+            }));
+
+            const { error } = await supabase
+                .from('message_reactions')
+                .insert({
+                    message_id: messageId,
+                    user_id: currentUser.id,
+                    emoji
+                } as any);
+
+            if (error && error.code !== '23505') {
+                console.error('Error adding reaction:', error);
+            }
+        }
+    };
+
+    // Keep old functions for compatibility but they now just call toggle
+    const addReaction = async (messageId: string, emoji: string) => toggleReaction(messageId, emoji);
+    const removeReaction = async (messageId: string, emoji: string) => toggleReaction(messageId, emoji);
+
+    // 12. Pin/Unpin Messages
+    const pinMessage = async (messageId: string) => {
+        if (!currentUser) {
+            console.log('[PIN] No current user');
+            return false;
+        }
+
+        console.log('[PIN] Pinning message:', messageId);
+
+        const { error } = await supabase
+            .from('messages')
+            .update({
+                pinned: true,
+                pinned_at: new Date().toISOString(),
+                pinned_by: currentUser.id,
+                pinned_by_username: currentUser.username
+            })
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('[PIN] Error pinning message:', error);
+            return false;
+        }
+
+        console.log('[PIN] Successfully pinned in database');
+
+        // Update local messages state
+        const pinnedMessage = messages.find(m => m.id === messageId);
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, pinned: true, pinned_at: new Date().toISOString(), pinned_by: currentUser.id, pinned_by_username: currentUser.username }
+                : m
+        ));
+
+        // Also update pinnedMessages array
+        if (pinnedMessage) {
+            const updated = {
+                ...pinnedMessage,
+                pinned: true,
+                pinned_at: new Date().toISOString(),
+                pinned_by: currentUser.id,
+                pinned_by_username: currentUser.username
+            };
+            setPinnedMessages(prev => [updated as Message, ...prev]);
+            console.log('[PIN] Updated local pinnedMessages array');
+        }
+
+        return true;
+    };
+
+    const unpinMessage = async (messageId: string) => {
+        const { error } = await supabase
+            .from('messages')
+            .update({
+                pinned: false,
+                pinned_at: null,
+                pinned_by: null,
+                pinned_by_username: null
+            })
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('Error unpinning message:', error);
+            return false;
+        }
+
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, pinned: false, pinned_at: null, pinned_by: null, pinned_by_username: null }
+                : m
+        ));
+        setPinnedMessages(prev => prev.filter(m => m.id !== messageId));
+        return true;
+    };
+
+    // Fetch pinned messages for current channel
+    useEffect(() => {
+        if (!currentChannel || currentChannel.id === 'announcements') {
+            setPinnedMessages([]);
+            return;
+        }
+
+        const fetchPinned = async () => {
+            const { data } = await supabase
+                .from('messages')
+                .select(`*, users:user_id ( avatar_url, role )`)
+                .eq('channel_id', currentChannel.id)
+                .eq('pinned', true)
+                .order('pinned_at', { ascending: false });
+
+            if (data) {
+                setPinnedMessages(data as Message[]);
+            }
+        };
+
+        fetchPinned();
+    }, [currentChannel]);
+
+    // 13. Edit Message
+    const editMessage = async (messageId: string, newContent: string) => {
+        const { error } = await supabase
+            .from('messages')
+            .update({
+                content: newContent,
+                edited_at: new Date().toISOString()
+            } as any)
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('[EDIT] Error editing message:', error);
+            return false;
+        }
+
+        // Update local state
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, content: newContent, edited_at: new Date().toISOString() }
+                : m
+        ));
+        return true;
+    };
+
     return {
         messages,
         channels,
-        users, // Export users
+        users,
+        onlineUsers,
         currentChannel,
         setCurrentChannel,
         recipient,
         setRecipient,
         currentUser,
         sendMessage,
-        sendDirectMessage, // Export sendDM
+        sendDirectMessage,
         isLoading,
-        messagesEndRef
+        messagesEndRef,
+        // New features
+        typingUsers,
+        broadcastTyping,
+        replyingTo,
+        setReplyingTo,
+        pinnedMessages,
+        canDeleteMessage,
+        deleteMessage,
+        addReaction,
+        removeReaction,
+        pinMessage,
+        unpinMessage,
+        editMessage
     };
 }

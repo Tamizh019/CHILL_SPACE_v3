@@ -4,8 +4,6 @@
 > **Your all-in-one collaboration hub.**  
 > *Connect your crew. Collaborate on projects. Play games. Chill together.*
 
-![Version](https://img.shields.io/badge/status-work%20in%20progress-orange) ![Next.js](https://img.shields.io/badge/built%20with-Next.js%2016-black) ![Tailwind](https://img.shields.io/badge/styling-Tailwind%20CSS%204-cyan)
-
 ---
 
 > [!IMPORTANT]
@@ -23,15 +21,30 @@ We are building a premium, high-aesthetic environment where productivity meets v
 
 ## ✨ Features (Current & In-Development)
 
-### 🎨 The "Cobalt" Aesthetic
-> *UI design inspired by [Cobalt](https://joincobalt.com/#intro).*
-- **Immersive Design**: A deep, dark UI (`#0a0a0a`) with glowing cyan accents (`#22d3ee`).
-- **Glassmorphism**: Premium frosted glass effects on cards and overlays.
+### 🎨 Aesthetics & UI
+> *Modern, dark-themed UI with premium glassmorphism.*
+- **Deep Dark Theme**: Immersive `#0a0a0a` background with vibrant violet/purple accents (`#8b5cf6`).
+- **Glassmorphism**: Premium frosted glass effects on cards, modals, and overlays.
 - **Fluid Animations**: Powered by Framer Motion for smooth transitions, hover effects, and micro-interactions.
-- **Premium Auth**: Custom-designed Login and Signup pages with particle effects, 3D tilts, and subtle interaction details.
+- **Micro-Interactions**: Hover states, clicking animations, and dynamic tooltips make the app feel alive.
 
 ### 🛠 Collaboration Tools
-- **📢 Real-time Chat**: Instant messaging for your squad with Public Spaces and Private DMs. (Live)
+
+#### 📢 Real-time Chat (Live)
+- **Instant Messaging**: Public Spaces and Private DMs powered by Supabase Realtime.
+- **Enhanced Reactions System**: 
+  - Smart Emoji Picker with active state highlighting.
+- **Message Features**: 
+  - Edit/Delete messages with history tracking.
+  - Link previews for rich content sharing.
+  - Reply threads / "Jump to Message".
+- **Server Stats Widget**: Real-time insights on community activity (Members, Messages Today, Active Channels).
+
+#### 👥 Presence & Community (Live)
+- **Online Members**: See who's active in real-time.
+- **User Profiles**: Custom avatars and status indicators.
+
+#### 📚 Premium Features (Planned)
 - **💻 Code Editor**: Built-in environment for collaborative coding sessions. (Planned)
 - **📁 Project Spaces**: Dedicated vaults for files, threads, and college project management. (Planned)
 - **🎮 Interactive Games**: Mini-games to take a break and bond with your team. (Planned)

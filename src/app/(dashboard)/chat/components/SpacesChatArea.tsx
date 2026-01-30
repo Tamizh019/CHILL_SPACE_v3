@@ -1,7 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Database } from '@/types/supabase';
+import { OnlineUsersList } from './OnlineUsersList';
+import { TypingIndicator } from './TypingIndicator';
+import { JumpToLatest } from './JumpToLatest';
+import { LinkPreview, extractUrls } from './LinkPreview';
+import { PinnedMessagesPanel } from './PinnedMessagesPanel';
+import { UniversalModal } from '@/components/ui/UniversalModal';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'] & {
@@ -17,16 +23,112 @@ interface SpacesChatAreaProps {
     messages: Message[];
     currentUser: User | null;
     sendMessage: (content: string) => Promise<void>;
-    messagesEndRef: React.RefObject<HTMLDivElement>;
+    messagesEndRef: React.RefObject<HTMLDivElement | null>;
+    onlineUsers: User[];
+    users: User[];
+    typingUsers: string[];
+    broadcastTyping: () => void;
+    replyingTo: Message | null;
+    setReplyingTo: (msg: Message | null) => void;
+    pinnedMessages: Message[];
+    canDeleteMessage: (userId: string, role: string | null) => boolean;
+    deleteMessage: (id: string) => Promise<boolean>;
+    addReaction: (messageId: string, emoji: string) => Promise<void>;
+    removeReaction: (messageId: string, emoji: string) => Promise<void>;
+    pinMessage: (id: string) => Promise<boolean | undefined>;
+    unpinMessage: (id: string) => Promise<boolean>;
+    editMessage: (id: string, content: string) => Promise<boolean>;
 }
 
-export function SpacesChatArea({ currentChannel, messages, currentUser, sendMessage, messagesEndRef }: SpacesChatAreaProps) {
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥'];
+const CODE_BLOCK_REGEX = /```(\w+)?\n?([\s\S]*?)```/g;
+const INLINE_CODE_REGEX = /`([^`]+)`/g;
+const MENTION_REGEX = /@(\w+)/g;
+
+export function SpacesChatArea({
+    currentChannel,
+    messages,
+    currentUser,
+    sendMessage,
+    messagesEndRef,
+    onlineUsers,
+    users,
+    typingUsers,
+    broadcastTyping,
+    replyingTo,
+    setReplyingTo,
+    pinnedMessages,
+    canDeleteMessage,
+    deleteMessage,
+    addReaction,
+    removeReaction,
+    pinMessage,
+    unpinMessage,
+    editMessage
+}: SpacesChatAreaProps) {
     const [inputValue, setInputValue] = useState('');
+    const [showPinnedPanel, setShowPinnedPanel] = useState(false);
+    const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
+    const [showJumpButton, setShowJumpButton] = useState(false);
+    const [newMessageCount, setNewMessageCount] = useState(0);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+    const [mentionFilter, setMentionFilter] = useState('');
+    const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+    const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+    const [viewingReaction, setViewingReaction] = useState<{ emoji: string; count: number; usernames: string[] } | null>(null);
+
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const isNearBottomRef = useRef(true);
+    const prevMessageCountRef = useRef(messages.length);
+
+    const handleScroll = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const threshold = 100;
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+        isNearBottomRef.current = isNearBottom;
+        setShowJumpButton(!isNearBottom);
+        if (isNearBottom) setNewMessageCount(0);
+    }, []);
+
+    useEffect(() => {
+        if (!isNearBottomRef.current && messages.length > prevMessageCountRef.current) {
+            setNewMessageCount(prev => prev + (messages.length - prevMessageCountRef.current));
+        }
+        prevMessageCountRef.current = messages.length;
+    }, [messages.length]);
+
+    useEffect(() => {
+        if (isNearBottomRef.current) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, messagesEndRef]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setShowJumpButton(false);
+        setNewMessageCount(0);
+    };
 
     const handleSend = async () => {
         if (!inputValue.trim()) return;
-        await sendMessage(inputValue);
-        setInputValue('');
+
+        if (editingMessage) {
+            // Edit existing message
+            const success = await editMessage(editingMessage.id, inputValue);
+            if (success) {
+                setInputValue('');
+                setEditingMessage(null);
+            }
+        } else {
+            // Send new message
+            await sendMessage(inputValue);
+            setInputValue('');
+            setReplyingTo(null);
+            scrollToBottom();
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -34,194 +136,617 @@ export function SpacesChatArea({ currentChannel, messages, currentUser, sendMess
             e.preventDefault();
             handleSend();
         }
+        if (e.key === 'Escape') {
+            setShowMentionDropdown(false);
+            setActiveMessageMenu(null);
+        }
     };
 
-    // Helper to format time
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setInputValue(value);
+        broadcastTyping();
+
+        const cursorPos = e.target.selectionStart || 0;
+        const textBeforeCursor = value.slice(0, cursorPos);
+        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+        if (lastAtIndex !== -1) {
+            const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
+            if (!textAfterAt.includes(' ')) {
+                setMentionFilter(textAfterAt.toLowerCase());
+                setMentionStartIndex(lastAtIndex);
+                setShowMentionDropdown(true);
+                return;
+            }
+        }
+        setShowMentionDropdown(false);
+    };
+
+    const insertMention = (username: string) => {
+        const before = inputValue.slice(0, mentionStartIndex);
+        const after = inputValue.slice(inputRef.current?.selectionStart || inputValue.length);
+        setInputValue(`${before}@${username} ${after}`);
+        setShowMentionDropdown(false);
+        inputRef.current?.focus();
+    };
+
+    const filteredMentionUsers = users.filter(u =>
+        u.username?.toLowerCase().includes(mentionFilter) && u.id !== currentUser?.id
+    ).slice(0, 5);
+
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
-    // Auto-scroll to bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, messagesEndRef]);
+    // Render message content with code blocks and mentions
+    const renderMessageContent = (content: string) => {
+        if (!content) return null;
 
-    // Check for Announcements restriction
+        // Handle code blocks first
+        let processedContent = content;
+        const codeBlocks: { placeholder: string; lang: string; code: string }[] = [];
+
+        processedContent = processedContent.replace(CODE_BLOCK_REGEX, (_, lang, code) => {
+            const placeholder = `__CODEBLOCK_${codeBlocks.length}__`;
+            codeBlocks.push({ placeholder, lang: lang || 'text', code: code.trim() });
+            return placeholder;
+        });
+
+        // Split by code block placeholders
+        const segments = processedContent.split(/(__CODEBLOCK_\d+__)/);
+
+        return segments.map((segment, index) => {
+            // Check if this is a code block
+            const codeBlock = codeBlocks.find(cb => cb.placeholder === segment);
+            if (codeBlock) {
+                return (
+                    <pre key={index} className="my-2 p-3 rounded-lg bg-black/50 border border-white/10 overflow-x-auto">
+                        <code className="text-xs font-mono text-emerald-400">{codeBlock.code}</code>
+                    </pre>
+                );
+            }
+
+            // Process inline code
+            const inlineParts = segment.split(INLINE_CODE_REGEX);
+            return (
+                <span key={index}>
+                    {inlineParts.map((part, i) => {
+                        if (i % 2 === 1) {
+                            return (
+                                <code key={i} className="px-1.5 py-0.5 mx-0.5 rounded bg-white/10 text-violet-300 text-xs font-mono">
+                                    {part}
+                                </code>
+                            );
+                        }
+                        // Process mentions
+                        const mentionParts = part.split(MENTION_REGEX);
+                        return mentionParts.map((mp, j) => {
+                            if (j % 2 === 1) {
+                                return (
+                                    <span key={j} className="px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-500/40 text-violet-200 font-medium border border-violet-400/20">
+                                        @{mp}
+                                    </span>
+                                );
+                            }
+                            return mp;
+                        });
+                    })}
+                </span>
+            );
+        });
+    };
+
+    // Check if messages should be grouped (same user within 2 minutes)
+    const shouldGroupWithPrevious = (currentMsg: Message, prevMsg: Message | null) => {
+        if (!prevMsg) return false;
+        if (currentMsg.user_id !== prevMsg.user_id) return false;
+        const currentTime = new Date(currentMsg.sent_at || 0).getTime();
+        const prevTime = new Date(prevMsg.sent_at || 0).getTime();
+        return (currentTime - prevTime) < 2 * 60 * 1000;
+    };
+
     const isAnnouncement = currentChannel?.id === 'announcements';
-    // Check if user is admin (or owner)
-    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+    const isAdmin = currentUser?.role === 'admin';
+    const isModerator = currentUser?.role === 'moderator';
+    const canPin = isAdmin || isModerator;
 
     const [showRestrictedModal, setShowRestrictedModal] = useState(false);
 
-    const handleInputClick = () => {
-        if (isAnnouncement && !isAdmin) {
-            setShowRestrictedModal(true);
-        }
+    const handleDeleteClick = async (messageId: string) => {
+        const success = await deleteMessage(messageId);
+        if (success) setDeleteConfirmId(null);
     };
 
+    // Close menu when clicking outside - with proper check
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('[data-message-menu]')) {
+                setActiveMessageMenu(null);
+            }
+        };
+        if (activeMessageMenu) {
+            document.addEventListener('click', handleClickOutside);
+            return () => document.removeEventListener('click', handleClickOutside);
+        }
+    }, [activeMessageMenu]);
+
     return (
-        <div className="flex-1 flex flex-col relative bg-gradient-to-b from-[#0c0c0c] to-[#110d1c]">
-            {/* Header */}
-            <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/10 backdrop-blur-md z-10">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl text-slate-500">#</span>
-                    <div>
-                        <h2 className="font-heading text-lg font-bold text-white leading-tight">
-                            {currentChannel?.name || 'Select a channel'}
-                        </h2>
-                        <p className="text-[10px] text-slate-400">{currentChannel?.description || ''}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-4">
-                    {/* Avatars omitted for now */}
-                </div>
-            </div>
-
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="flex flex-col items-center justify-center text-center py-8 opacity-50">
-                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
-                        <span className="material-icons-round text-2xl text-slate-600">tag</span>
-                    </div>
-                    <p className="text-slate-500 text-xs">Welcome to the start of #{currentChannel?.name || 'channel'}.</p>
-                </div>
-
-                {messages.map((msg, index) => {
-                    const isCurrentUser = msg.user_id === currentUser?.id;
-                    const avatar = msg.users?.avatar_url;
-
-                    // Date Divider Logic
-                    const currentDate = new Date(msg.sent_at || Date.now());
-                    const outputDate = currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-                    let showDivider = false;
-
-                    if (index === 0) {
-                        showDivider = true;
-                    } else {
-                        const prevDate = new Date(messages[index - 1].sent_at || Date.now());
-                        if (currentDate.toDateString() !== prevDate.toDateString()) {
-                            showDivider = true;
-                        }
-                    }
-
-                    return (
-                        <div key={msg.id}>
-                            {showDivider && (
-                                <div className="flex items-center justify-center my-6 gap-4">
-                                    <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent flex-1 max-w-[12rem]"></div>
-                                    <span className="px-3 py-0.5 rounded-full border border-white/5 bg-white/[0.02] text-[10px] font-medium text-slate-500/80 backdrop-blur-[1px] select-none">
-                                        {outputDate}
-                                    </span>
-                                    <div className="h-px bg-gradient-to-r from-transparent via-white/5 to-transparent flex-1 max-w-[12rem]"></div>
-                                </div>
-                            )}
-
-                            {isCurrentUser ? (
-                                /* Current User Message (Right Aligned) */
-                                <div className="flex gap-4 max-w-3xl ml-auto flex-row-reverse group">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold mt-1 shrink-0 overflow-hidden">
-                                        {avatar ? <img src={avatar} alt="Me" className="w-full h-full object-cover" /> : 'Me'}
-                                    </div>
-                                    <div className="space-y-1 flex flex-col items-end">
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-[10px] text-slate-500">{formatTime(msg.sent_at)}</span>
-                                            <span className="font-heading font-bold text-sm text-white">{msg.username || 'You'}</span>
-                                        </div>
-                                        <div className="bg-violet-600 text-white p-3.5 rounded-2xl rounded-tr-none text-sm leading-relaxed shadow-[0_4px_20px_rgba(124,58,237,0.2)]">
-                                            {msg.content}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                /* Other User Message (Left Aligned) */
-                                <div className="flex gap-4 max-w-3xl group">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center text-white text-xs font-bold mt-1 shrink-0 overflow-hidden">
-                                        {avatar ? <img src={avatar} alt={msg.username || 'User'} className="w-full h-full object-cover" /> : (msg.username?.[0] || 'U')}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-heading font-bold text-sm text-white cursor-pointer hover:underline">{msg.username}</span>
-                                            {msg.users?.role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">{msg.users.role}</span>}
-                                            <span className="text-[10px] text-slate-500">{formatTime(msg.sent_at)}</span>
-                                        </div>
-                                        <div className="bg-[#1a1a1a] border border-white/5 p-3.5 rounded-2xl rounded-tl-none text-slate-300 text-sm leading-relaxed shadow-sm hover:border-white/10 transition-colors">
-                                            {msg.content}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+        <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col relative bg-gradient-to-b from-[#0c0c0c] to-[#110d1c]">
+                {/* Header */}
+                <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/10 backdrop-blur-md z-10">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl text-slate-500">#</span>
+                        <div>
+                            <h2 className="font-heading text-lg font-bold text-white leading-tight">
+                                {currentChannel?.name || 'Select a channel'}
+                            </h2>
+                            <p className="text-[10px] text-slate-400">{currentChannel?.description || ''}</p>
                         </div>
-                    );
-                })}
-                <div ref={messagesEndRef} />
-            </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* Pinned Messages Button - Always visible if there are pinned messages */}
+                        <button
+                            onClick={() => setShowPinnedPanel(true)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all
+                                ${pinnedMessages.length > 0
+                                    ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20'
+                                    : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                                }`}
+                        >
+                            <span className="material-icons-round text-sm">push_pin</span>
+                            <span className="text-xs font-medium">{pinnedMessages.length || 0}</span>
+                        </button>
+                    </div>
+                </div>
 
-            {/* Input */}
-            <div className="p-6 pt-2">
+                {/* Messages Area */}
                 <div
-                    className={`bg-white/5 border border-white/5 rounded-xl p-3 flex items-center gap-3 relative z-20 ${isAnnouncement && !isAdmin ? 'cursor-not-allowed opacity-70' : ''
-                        }`}
-                    onClick={handleInputClick}
+                    ref={messagesContainerRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto px-4 py-4 space-y-0.5"
                 >
-                    <button type="button" className="text-slate-400 hover:text-white transition-colors" disabled={isAnnouncement && !isAdmin}>
-                        <span className="material-icons-round">add_circle</span>
-                    </button>
-                    <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={isAnnouncement && !isAdmin ? "Only admin can message !!" : `Message #${currentChannel?.name || 'channel'}...`}
-                        className={`flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-slate-500 font-sans ${isAnnouncement && !isAdmin ? 'cursor-not-allowed' : ''
-                            }`}
-                        disabled={isAnnouncement && !isAdmin}
-                    />
-                    <button className="text-slate-400 hover:text-white transition-colors" disabled={isAnnouncement && !isAdmin}>
-                        <span className="material-icons-round">sentiment_satisfied</span>
-                    </button>
-                    <button
-                        onClick={handleSend}
-                        disabled={isAnnouncement && !isAdmin}
-                        className="p-2 bg-white text-black rounded-lg hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:pointer-events-none"
-                    >
-                        <span className="material-icons-round text-lg">send</span>
-                    </button>
+                    <div className="flex flex-col items-center justify-center text-center py-8 opacity-50">
+                        <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
+                            <span className="material-icons-round text-2xl text-slate-600">tag</span>
+                        </div>
+                        <p className="text-slate-500 text-xs">Welcome to #{currentChannel?.name || 'channel'}.</p>
+                    </div>
+
+                    {messages.map((msg, index) => {
+                        const isCurrentUser = msg.user_id === currentUser?.id;
+                        const avatar = msg.users?.avatar_url;
+                        const messageRole = msg.users?.role || null;
+                        const canDelete = canDeleteMessage(msg.user_id, messageRole);
+                        const urls = extractUrls(msg.content || '');
+                        const prevMsg = index > 0 ? messages[index - 1] : null;
+                        const isGrouped = shouldGroupWithPrevious(msg, prevMsg);
+
+                        // Date Divider
+                        const currentDate = new Date(msg.sent_at || Date.now());
+                        const outputDate = currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+                        let showDivider = false;
+                        if (index === 0) showDivider = true;
+                        else {
+                            const prevDate = new Date(messages[index - 1].sent_at || Date.now());
+                            if (currentDate.toDateString() !== prevDate.toDateString()) showDivider = true;
+                        }
+
+                        return (
+                            <div key={msg.id}>
+                                {showDivider && (
+                                    <div className="flex items-center justify-center my-6 gap-4">
+                                        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent flex-1 max-w-[8rem]"></div>
+                                        <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] text-[10px] font-medium text-slate-400">
+                                            {outputDate}
+                                        </span>
+                                        <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent flex-1 max-w-[8rem]"></div>
+                                    </div>
+                                )}
+
+                                {/* Message Row - Fixed Structure */}
+                                <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${isGrouped ? 'mt-0.5' : 'mt-3'}`}>
+                                    {/* Left side: Avatar for other users */}
+                                    {!isCurrentUser && (
+                                        <div className="w-10 mr-3 flex-shrink-0">
+                                            {!isGrouped && (
+                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                                                    {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : (msg.username?.[0]?.toUpperCase() || 'U')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Message Bubble Container */}
+                                    <div className={`relative max-w-[70%] group/msg ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
+                                        {/* Username & Time - Only for non-grouped */}
+                                        {!isGrouped && (
+                                            <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                                                <span className="font-semibold text-sm text-white">{msg.username}</span>
+                                                {messageRole && messageRole !== 'user' && (
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-medium uppercase">
+                                                        {messageRole}
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] text-slate-500">
+                                                    {formatTime(msg.sent_at)}
+                                                    {msg.edited_at && <span className="text-[9px] text-slate-600 ml-1">(edited)</span>}
+                                                </span>
+                                                {msg.pinned && <span className="material-icons-round text-yellow-500 text-xs">push_pin</span>}
+                                            </div>
+                                        )}
+
+                                        {/* Message Bubble with Arrow */}
+                                        <div className="relative inline-block">
+                                            {/* The Message */}
+                                            <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed
+                                                ${isCurrentUser
+                                                    ? 'bg-violet-600 text-white rounded-br-md'
+                                                    : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
+                                                }`}
+                                            >
+                                                {renderMessageContent(msg.content || '')}
+                                            </div>
+
+                                            {/* Click-only Arrow - No hover glitch */}
+                                            <div
+                                                data-message-menu
+                                                className={`absolute top-1 ${isCurrentUser ? '-left-8' : '-right-8'}
+                                                            ${activeMessageMenu === msg.id ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}
+                                                            transition-opacity duration-150`}
+                                            >
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id);
+                                                    }}
+                                                    className={`w-6 h-6 rounded-full border border-white/10 
+                                                               flex items-center justify-center text-slate-400 
+                                                               hover:text-white transition-all shadow-lg
+                                                               ${activeMessageMenu === msg.id ? 'bg-violet-600 text-white' : 'bg-[#2a2a2a] hover:bg-white/10'}`}
+                                                >
+                                                    <span className={`material-icons-round text-sm transition-transform duration-200 ${activeMessageMenu === msg.id ? 'rotate-180' : ''}`}>expand_more</span>
+                                                </button>
+
+                                                {/* Dropdown Menu - Shows above, positioned to stay within container */}
+                                                {activeMessageMenu === msg.id && (
+                                                    <div
+                                                        className={`absolute z-50 bottom-full mb-1 
+                                                                    ${isCurrentUser ? 'right-0' : 'left-0'}
+                                                                    bg-[#1a1a1a] border border-white/10 rounded-xl 
+                                                                    shadow-2xl overflow-hidden w-[180px] animate-scale-in`}
+                                                        onClick={e => e.stopPropagation()}
+                                                    >
+                                                        {/* Quick Reactions Row */}
+                                                        <div className="p-2 border-b border-white/5 flex gap-1 justify-center">
+                                                            {REACTION_EMOJIS.map(emoji => {
+                                                                const isActive = (msg as any).reactions?.some((r: any) => r.emoji === emoji && r.userIds.includes(currentUser?.id));
+                                                                return (
+                                                                    <button
+                                                                        key={emoji}
+                                                                        onClick={() => {
+                                                                            addReaction(msg.id, emoji);
+                                                                            setActiveMessageMenu(null);
+                                                                        }}
+                                                                        className={`w-9 h-9 rounded-full 
+                                                                                   flex items-center justify-center text-xl 
+                                                                                   transition-transform hover:scale-125 active:scale-95
+                                                                                   ${isActive
+                                                                                ? 'bg-violet-600/20 border border-violet-500 text-violet-300 shadow-[0_0_10px_rgba(139,92,246,0.3)]'
+                                                                                : 'hover:bg-white/10 text-slate-400 hover:text-white'}`}
+                                                                    >
+                                                                        {emoji}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {/* Menu Actions */}
+                                                        <div className="py-1">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setReplyingTo(msg);
+                                                                    setActiveMessageMenu(null);
+                                                                }}
+                                                                className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
+                                                                           hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                                            >
+                                                                <span className="material-icons-round text-lg text-slate-400">reply</span>
+                                                                Reply
+                                                            </button>
+
+                                                            {isCurrentUser && (() => {
+                                                                const messageTime = new Date(msg.sent_at || 0);
+                                                                const now = new Date();
+                                                                const minutesAgo = (now.getTime() - messageTime.getTime()) / (1000 * 60);
+                                                                const canEdit = minutesAgo < 4;
+
+                                                                return canEdit && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingMessage(msg);
+                                                                            setInputValue(msg.content || '');
+                                                                            setActiveMessageMenu(null);
+                                                                            inputRef.current?.focus();
+                                                                        }}
+                                                                        className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
+                                                                                   hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                                                    >
+                                                                        <span className="material-icons-round text-lg text-slate-400">edit</span>
+                                                                        Edit Message
+                                                                        <span className="ml-auto text-[10px] text-slate-500">
+                                                                            {Math.floor(4 - minutesAgo)}m left
+                                                                        </span>
+                                                                    </button>
+                                                                );
+                                                            })()}
+
+                                                            {canPin && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        msg.pinned ? unpinMessage(msg.id) : pinMessage(msg.id);
+                                                                        setActiveMessageMenu(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm text-slate-300 
+                                                                               hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <span className={`material-icons-round text-lg ${msg.pinned ? 'text-yellow-500' : 'text-slate-400'}`}>push_pin</span>
+                                                                    {msg.pinned ? 'Unpin Message' : 'Pin Message'}
+                                                                </button>
+                                                            )}
+
+                                                            {canDelete && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setDeleteConfirmId(msg.id);
+                                                                        setActiveMessageMenu(null);
+                                                                    }}
+                                                                    className="w-full px-4 py-2.5 text-left text-sm text-red-400 
+                                                                               hover:bg-red-500/10 flex items-center gap-3 transition-colors"
+                                                                >
+                                                                    <span className="material-icons-round text-lg">delete</span>
+                                                                    Delete Message
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Link Previews */}
+                                        {urls.length > 0 && (
+                                            <div className="mt-2">
+                                                {urls.slice(0, 1).map((url, i) => (
+                                                    <LinkPreview key={i} url={url} />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Reactions Display */}
+                                        {(msg as any).reactions && (msg as any).reactions.length > 0 && (
+                                            <div className={`flex items-center gap-1.5 mt-2 flex-wrap ${isCurrentUser ? 'justify-end' : ''}`}>
+                                                {(msg as any).reactions.map((reaction: { emoji: string; count: number; userIds: string[]; usernames?: string[] }) => {
+                                                    const hasReacted = reaction.userIds.includes(currentUser?.id || '');
+                                                    const tooltipText = reaction.usernames?.join(', ') || 'Loading...';
+                                                    return (
+                                                        <button
+                                                            key={reaction.emoji}
+                                                            onClick={() => setViewingReaction({
+                                                                emoji: reaction.emoji,
+                                                                count: reaction.count,
+                                                                usernames: reaction.usernames || []
+                                                            })}
+                                                            title={`${tooltipText} reacted with ${reaction.emoji}`}
+                                                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer
+                                                                ${hasReacted
+                                                                    ? 'bg-violet-500/20 border border-violet-500/50 text-violet-300'
+                                                                    : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
+                                                                }`}
+                                                        >
+                                                            <span>{reaction.emoji}</span>
+                                                            <span className="font-medium">{reaction.count}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right side: Avatar for current user */}
+                                    {isCurrentUser && (
+                                        <div className="w-10 ml-3 flex-shrink-0">
+                                            {!isGrouped && (
+                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                                                    {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : 'Me'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <div ref={messagesEndRef} />
                 </div>
-                <div className="text-center mt-2">
-                    <p className="text-[10px] text-slate-600">
-                        Press <span className="font-mono text-slate-500">Enter</span> to send
-                    </p>
+
+                {/* Typing Indicator */}
+                <TypingIndicator typingUsers={typingUsers} />
+
+                {/* Jump to Latest */}
+                <JumpToLatest show={showJumpButton} newMessageCount={newMessageCount} onClick={scrollToBottom} />
+
+                {/* Reply Preview - Smooth animation */}
+                {replyingTo && (
+                    <div className="px-6 py-2.5 bg-gradient-to-r from-violet-500/10 to-purple-500/5 border-t border-violet-500/20 flex items-center justify-between animate-slide-up backdrop-blur-sm">
+                        <div className="flex items-center gap-3 text-sm overflow-hidden">
+                            <div className="w-1 h-8 bg-violet-500 rounded-full flex-shrink-0" />
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="material-icons-round text-violet-400 text-base">reply</span>
+                                    <span className="text-slate-400 text-xs">Replying to</span>
+                                    <span className="text-white font-medium text-xs">{replyingTo.username}</span>
+                                </div>
+                                <p className="text-slate-500 truncate text-xs mt-0.5 max-w-[300px]">{replyingTo.content}</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-white p-1 hover:bg-white/10 rounded-full transition-all">
+                            <span className="material-icons-round text-lg">close</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Input Area */}
+                <div className="p-4 border-t border-white/5">
+                    <div className="relative">
+                        {/* Mention Dropdown */}
+                        {showMentionDropdown && filteredMentionUsers.length > 0 && (
+                            <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-scale-in">
+                                <div className="px-3 py-2 border-b border-white/5">
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Members</p>
+                                </div>
+                                {filteredMentionUsers.map(user => (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => insertMention(user.username || '')}
+                                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
+                                    >
+                                        {user.avatar_url ? (
+                                            <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                        ) : (
+                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
+                                                {user.username?.[0]?.toUpperCase()}
+                                            </div>
+                                        )}
+                                        <span className="text-sm text-white">{user.username}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        <div
+                            className={`bg-[#1e1e1e] border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3
+                                ${isAnnouncement && !isAdmin ? 'cursor-not-allowed opacity-50' : ''}`}
+                            onClick={() => isAnnouncement && !isAdmin && setShowRestrictedModal(true)}
+                        >
+                            <button type="button" className="text-slate-500 hover:text-white transition-colors" disabled={isAnnouncement && !isAdmin}>
+                                <span className="material-icons-round text-xl">add_circle</span>
+                            </button>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder={isAnnouncement && !isAdmin ? "Only admin can message" : `Message #${currentChannel?.name || 'channel'}...`}
+                                disabled={isAnnouncement && !isAdmin}
+                                className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-slate-500"
+                            />
+                            <button className="text-slate-500 hover:text-white transition-colors" disabled={isAnnouncement && !isAdmin}>
+                                <span className="material-icons-round text-xl">mood</span>
+                            </button>
+
+                            {/* Send Button - Only visible when text exists */}
+                            <button
+                                onClick={handleSend}
+                                disabled={!inputValue.trim() || (isAnnouncement && !isAdmin)}
+                                className={`p-2 rounded-xl transition-all duration-200
+                                    ${inputValue.trim()
+                                        ? 'bg-violet-600 text-white hover:bg-violet-500 scale-100 opacity-100'
+                                        : 'bg-slate-700/50 text-slate-500 scale-95 opacity-50 cursor-not-allowed'
+                                    }`}
+                            >
+                                <span className="material-icons-round text-lg">send</span>
+                            </button>
+                        </div>
+                        <p className="text-center text-[10px] text-slate-600 mt-2">
+                            <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">```</span> for code • <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">@</span> to mention
+                        </p>
+                    </div>
                 </div>
+
+                {/* Modals - Using UniversalModal */}
+                <UniversalModal
+                    isOpen={showRestrictedModal}
+                    onClose={() => setShowRestrictedModal(false)}
+                    title="Restricted Access"
+                    message="Only admins can post in Announcements."
+                    icon="lock"
+                    confirmText="Got it"
+                    showCancel={false}
+                />
+
+                <UniversalModal
+                    isOpen={!!deleteConfirmId}
+                    onClose={() => setDeleteConfirmId(null)}
+                    onConfirm={() => deleteConfirmId && handleDeleteClick(deleteConfirmId)}
+                    title="Delete Message?"
+                    message="This action cannot be undone."
+                    variant="danger"
+                    confirmText="Delete"
+                    cancelText="Cancel"
+                />
             </div>
 
-            {/* Restricted Access Modal */}
-            {showRestrictedModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden">
-                        {/* Glow Effect */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/20 blur-[60px] rounded-full pointer-events-none" />
+            {/* Pinned Panel */}
+            <PinnedMessagesPanel
+                isOpen={showPinnedPanel}
+                onClose={() => setShowPinnedPanel(false)}
+                pinnedMessages={pinnedMessages}
+                onUnpin={unpinMessage}
+                canUnpin={canPin}
+            />
 
-                        <div className="flex flex-col items-center text-center relative z-10">
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/10">
-                                <span className="material-icons-round text-2xl text-slate-400">lock</span>
+            {/* Reaction Users Modal */}
+            {viewingReaction && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+                    onClick={() => setViewingReaction(null)}
+                >
+                    <div
+                        className="bg-[#1a1a1a] border border-white/10 rounded-xl p-4 min-w-[240px] max-w-sm shadow-2xl animate-scale-in"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">{viewingReaction.emoji}</span>
+                                <div>
+                                    <h3 className="font-bold text-white text-sm">Reactions</h3>
+                                    <p className="text-[10px] text-slate-400">{viewingReaction.count} people reacted</p>
+                                </div>
                             </div>
-
-                            <h3 className="text-xl font-semibold text-white mb-2">Restricted Access</h3>
-                            <p className="text-slate-400 text-sm mb-6">
-                                Only admins can post messages in the Announcements channel.
-                            </p>
-
                             <button
-                                onClick={() => setShowRestrictedModal(false)}
-                                className="w-full py-2.5 rounded-xl text-sm font-medium bg-white text-black hover:bg-slate-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                                onClick={() => setViewingReaction(null)}
+                                className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
                             >
-                                Okay, got it
+                                <span className="material-icons-round text-sm">close</span>
                             </button>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                            {viewingReaction.usernames?.length > 0 ? (
+                                viewingReaction.usernames.map((name, i) => (
+                                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center text-xs font-bold text-violet-300 ring-1 ring-violet-500/30">
+                                            {name[0].toUpperCase()}
+                                        </div>
+                                        <span className="text-sm text-slate-200 font-medium">{name}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-4 text-slate-500 text-xs">
+                                    Loading users...
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* Online Users Sidebar */}
+            <OnlineUsersList onlineUsers={onlineUsers} currentUserId={currentUser?.id || null} />
         </div>
     );
 }
