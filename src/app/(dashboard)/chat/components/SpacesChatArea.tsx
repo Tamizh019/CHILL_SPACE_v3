@@ -9,6 +9,9 @@ import { LinkPreview, extractUrls } from './LinkPreview';
 import { PinnedMessagesPanel } from './PinnedMessagesPanel';
 import { UniversalModal } from '@/components/ui/UniversalModal';
 import { ChatDemoModal } from './ChatDemoModal';
+import { ChannelSettingsModal } from './ChannelSettingsModal';
+import { useFiles, FileRecord } from '@/hooks/useFiles';
+import { getFileTypeInfo } from '@/utils/fileUtils';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'] & {
@@ -44,6 +47,7 @@ interface SpacesChatAreaProps {
     pinMessage: (id: string) => Promise<boolean | undefined>;
     unpinMessage: (id: string) => Promise<boolean>;
     editMessage: (id: string, content: string) => Promise<boolean>;
+    onChannelDeleted?: () => void;
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥'];
@@ -70,10 +74,12 @@ export function SpacesChatArea({
     removeReaction,
     pinMessage,
     unpinMessage,
-    editMessage
+    editMessage,
+    onChannelDeleted
 }: SpacesChatAreaProps) {
     const [inputValue, setInputValue] = useState('');
     const [showPinnedPanel, setShowPinnedPanel] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [activeMessageMenu, setActiveMessageMenu] = useState<string | null>(null);
     const [showJumpButton, setShowJumpButton] = useState(false);
     const [newMessageCount, setNewMessageCount] = useState(0);
@@ -84,6 +90,11 @@ export function SpacesChatArea({
     const [editingMessage, setEditingMessage] = useState<Message | null>(null);
     const [viewingReaction, setViewingReaction] = useState<{ emoji: string; count: number; usernames: string[] } | null>(null);
     const [showDemoModal, setShowDemoModal] = useState(false);
+    const [mentionTab, setMentionTab] = useState<'members' | 'files'>('members');
+    const [activeFileMention, setActiveFileMention] = useState<FileRecord | null>(null);
+
+    // Fetch files for current channel (for @ mentions)
+    const { files: channelFiles, getFileUrl } = useFiles(currentChannel?.id !== 'announcements' ? currentChannel?.id : undefined);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -178,9 +189,28 @@ export function SpacesChatArea({
         inputRef.current?.focus();
     };
 
+    const insertFileMention = (file: FileRecord) => {
+        const before = inputValue.slice(0, mentionStartIndex);
+        const after = inputValue.slice(inputRef.current?.selectionStart || inputValue.length);
+        // Use format @[filename:fileId] for file mentions
+        const fileName = file.display_name || file.original_filename;
+        setInputValue(`${before}@${fileName} ${after}`);
+        setShowMentionDropdown(false);
+        inputRef.current?.focus();
+    };
+
     const filteredMentionUsers = users.filter(u =>
         u.username?.toLowerCase().includes(mentionFilter) && u.id !== currentUser?.id
     ).slice(0, 5);
+
+    // Filter files for @ mention dropdown
+    const filteredMentionFiles = channelFiles.filter(f =>
+    (f.display_name?.toLowerCase().includes(mentionFilter) ||
+        f.original_filename?.toLowerCase().includes(mentionFilter))
+    ).slice(0, 5);
+
+    // Check if there are any matches in either category
+    const hasMentionMatches = filteredMentionUsers.length > 0 || filteredMentionFiles.length > 0;
 
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return '';
@@ -231,6 +261,37 @@ export function SpacesChatArea({
                         const mentionParts = part.split(MENTION_REGEX);
                         return mentionParts.map((mp, j) => {
                             if (j % 2 === 1) {
+                                // Check if this mention matches a file
+                                const matchedFile = channelFiles.find(f =>
+                                    (f.display_name?.toLowerCase() === mp.toLowerCase()) ||
+                                    (f.original_filename?.toLowerCase() === mp.toLowerCase()) ||
+                                    (f.display_name?.toLowerCase().includes(mp.toLowerCase())) ||
+                                    (f.original_filename?.toLowerCase().includes(mp.toLowerCase()))
+                                );
+
+                                if (matchedFile) {
+                                    // Render as file mention with icon - clickable
+                                    const fileTypeInfo = getFileTypeInfo(matchedFile.file_type);
+                                    return (
+                                        <span
+                                            key={j}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveFileMention(activeFileMention?.id === matchedFile.id ? null : matchedFile);
+                                            }}
+                                            className="relative inline-flex items-center gap-1.5 px-2 py-1 mx-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-medium border border-emerald-400/30 cursor-pointer hover:bg-emerald-500/30 transition-colors"
+                                            title="Click for options"
+                                        >
+                                            <span className={`material-icons-round text-xs ${fileTypeInfo.color}`}>
+                                                {fileTypeInfo.icon}
+                                            </span>
+                                            <span className="text-sm">@{mp}</span>
+                                            <span className="material-icons-round text-xs text-emerald-400/70">expand_more</span>
+                                        </span>
+                                    );
+                                }
+
+                                // Regular user mention
                                 return (
                                     <span key={j} className="px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-500/40 text-violet-200 font-medium border border-violet-400/20">
                                         @{mp}
@@ -295,6 +356,16 @@ export function SpacesChatArea({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {/* Settings Button - Only for admins/mods and non-system channels */}
+                        {canPin && currentChannel && currentChannel.id !== 'announcements' && (
+                            <button
+                                onClick={() => setShowSettingsModal(true)}
+                                className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 hover:bg-violet-500/20 hover:border-violet-500/30 hover:text-violet-400 transition-all"
+                                title="Channel Settings"
+                            >
+                                <span className="material-icons-round text-lg">settings</span>
+                            </button>
+                        )}
                         {/* Help Button */}
                         <button
                             onClick={() => setShowDemoModal(true)}
@@ -431,7 +502,7 @@ export function SpacesChatArea({
                                             {/* The Message */}
                                             <div
                                                 id={`msg-${msg.id}`}
-                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-colors duration-500
+                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-colors duration-500 whitespace-pre-wrap break-words
                                                 ${isCurrentUser
                                                         ? 'bg-violet-600 text-white rounded-br-md'
                                                         : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
@@ -651,28 +722,96 @@ export function SpacesChatArea({
                 {/* Input Area */}
                 <div className="p-4 border-t border-white/5">
                     <div className="relative">
-                        {/* Mention Dropdown */}
-                        {showMentionDropdown && filteredMentionUsers.length > 0 && (
-                            <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-scale-in">
-                                <div className="px-3 py-2 border-b border-white/5">
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Members</p>
-                                </div>
-                                {filteredMentionUsers.map(user => (
+                        {/* Mention Dropdown - Shows Members and Files */}
+                        {showMentionDropdown && hasMentionMatches && (
+                            <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-scale-in">
+                                {/* Tabs */}
+                                <div className="flex border-b border-white/5">
                                     <button
-                                        key={user.id}
-                                        onClick={() => insertMention(user.username || '')}
-                                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
+                                        onClick={() => setMentionTab('members')}
+                                        className={`flex-1 px-3 py-2 text-[10px] uppercase tracking-wider transition-colors
+                                            ${mentionTab === 'members'
+                                                ? 'text-violet-400 border-b-2 border-violet-500 bg-violet-500/10'
+                                                : 'text-slate-500 hover:text-slate-300'}`}
                                     >
-                                        {user.avatar_url ? (
-                                            <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                        <span className="flex items-center justify-center gap-1.5">
+                                            <span className="material-icons-round text-xs">person</span>
+                                            Members ({filteredMentionUsers.length})
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => setMentionTab('files')}
+                                        className={`flex-1 px-3 py-2 text-[10px] uppercase tracking-wider transition-colors
+                                            ${mentionTab === 'files'
+                                                ? 'text-violet-400 border-b-2 border-violet-500 bg-violet-500/10'
+                                                : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        <span className="flex items-center justify-center gap-1.5">
+                                            <span className="material-icons-round text-xs">attach_file</span>
+                                            Files ({filteredMentionFiles.length})
+                                        </span>
+                                    </button>
+                                </div>
+
+                                {/* Members List */}
+                                {mentionTab === 'members' && (
+                                    <div className="max-h-48 overflow-y-auto">
+                                        {filteredMentionUsers.length > 0 ? (
+                                            filteredMentionUsers.map(user => (
+                                                <button
+                                                    key={user.id}
+                                                    onClick={() => insertMention(user.username || '')}
+                                                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
+                                                >
+                                                    {user.avatar_url ? (
+                                                        <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
+                                                            {user.username?.[0]?.toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <span className="text-sm text-white">{user.username}</span>
+                                                </button>
+                                            ))
                                         ) : (
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
-                                                {user.username?.[0]?.toUpperCase()}
+                                            <div className="px-3 py-3 text-center text-xs text-slate-500">
+                                                No members found
                                             </div>
                                         )}
-                                        <span className="text-sm text-white">{user.username}</span>
-                                    </button>
-                                ))}
+                                    </div>
+                                )}
+
+                                {/* Files List */}
+                                {mentionTab === 'files' && (
+                                    <div className="max-h-48 overflow-y-auto">
+                                        {filteredMentionFiles.length > 0 ? (
+                                            filteredMentionFiles.map(file => {
+                                                const typeInfo = getFileTypeInfo(file.file_type);
+                                                return (
+                                                    <button
+                                                        key={file.id}
+                                                        onClick={() => insertFileMention(file)}
+                                                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
+                                                    >
+                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${typeInfo.color} bg-white/5`}>
+                                                            <span className="material-icons-round text-sm">{typeInfo.icon}</span>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm text-white truncate">{file.display_name || file.original_filename}</p>
+                                                            <p className="text-[10px] text-slate-500 truncate">
+                                                                {file.file_type.split('/')[1]?.toUpperCase()} • by {file.uploader?.username || 'Unknown'}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="px-3 py-3 text-center text-xs text-slate-500">
+                                                No files found in this channel
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -810,6 +949,100 @@ export function SpacesChatArea({
 
             {/* Chat Demo Modal */}
             <ChatDemoModal isOpen={showDemoModal} onClose={() => setShowDemoModal(false)} />
+
+            {/* Channel Settings Modal */}
+            {currentChannel && (
+                <ChannelSettingsModal
+                    isOpen={showSettingsModal}
+                    onClose={() => setShowSettingsModal(false)}
+                    channel={currentChannel}
+                    onChannelDeleted={() => {
+                        setShowSettingsModal(false);
+                        onChannelDeleted?.();
+                    }}
+                    currentUserRole={currentUser?.role}
+                />
+            )}
+
+            {/* File Mention Popup Modal */}
+            {activeFileMention && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                    onClick={() => setActiveFileMention(null)}
+                >
+                    <div
+                        className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* File Info */}
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${getFileTypeInfo(activeFileMention.file_type).color} bg-white/5`}>
+                                <span className="material-icons-round text-2xl">{getFileTypeInfo(activeFileMention.file_type).icon}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-white truncate">{activeFileMention.display_name || activeFileMention.original_filename}</h3>
+                                <p className="text-xs text-slate-500">
+                                    {activeFileMention.file_type.split('/')[1]?.toUpperCase()} • Uploaded by {activeFileMention.uploader?.username || 'Unknown'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="space-y-2">
+                            {/* Download Button */}
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const url = await getFileUrl(activeFileMention.storage_path);
+                                        if (url) {
+                                            const response = await fetch(url);
+                                            const blob = await response.blob();
+                                            const blobUrl = window.URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = blobUrl;
+                                            a.download = activeFileMention.original_filename;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            window.URL.revokeObjectURL(blobUrl);
+                                        }
+                                    } catch (error) {
+                                        console.error('Download failed:', error);
+                                    }
+                                    setActiveFileMention(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+                            >
+                                <span className="material-icons-round">download</span>
+                                <span className="font-medium">Download File</span>
+                            </button>
+
+                            {/* View in Files Button */}
+                            <button
+                                onClick={() => {
+                                    // This would typically navigate to files tab - for now just close
+                                    // You could add a callback prop to switch tabs
+                                    setActiveFileMention(null);
+                                    // Scroll to show a notification or open files tab
+                                    alert(`File "${activeFileMention.display_name || activeFileMention.original_filename}" is in the Files section. Switch to Files tab to view.`);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors"
+                            >
+                                <span className="material-icons-round">folder_open</span>
+                                <span className="font-medium">View in Files</span>
+                            </button>
+                        </div>
+
+                        {/* Close */}
+                        <button
+                            onClick={() => setActiveFileMention(null)}
+                            className="w-full mt-4 py-2 text-sm text-slate-500 hover:text-white transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

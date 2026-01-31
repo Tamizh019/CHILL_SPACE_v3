@@ -15,7 +15,10 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "Chill Space - The Future of Chat",
+  title: {
+    template: '%s | Chill Space',
+    default: 'Chill Space - The Future of Chat',
+  },
   description: "Connect without the noise. A new era of real-time conversation designed for clarity, simplicity, and focus.",
 };
 

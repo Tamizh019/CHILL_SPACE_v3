@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Database } from '@/types/supabase';
 
@@ -22,7 +22,7 @@ export function useChat() {
     const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // State for Direct Messages
@@ -92,7 +92,7 @@ export function useChat() {
 
         fetchChannels();
 
-        // Subscribe to new channels
+        // Subscribe to channel changes (INSERT and DELETE)
         const channelSubscription = supabase
             .channel('public:channels')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'channels' }, (payload) => {
@@ -106,6 +106,19 @@ export function useChat() {
                         description: 'Official updates and news from the Chill Space team.'
                     } as any, ...newChannels];
                 });
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'channels' }, (payload) => {
+                const deletedId = (payload.old as any)?.id;
+                if (deletedId) {
+                    setChannels(prev => prev.filter(c => c.id !== deletedId));
+                    // If current channel was deleted, switch to General
+                    setCurrentChannel(prev => {
+                        if (prev?.id === deletedId) {
+                            return null; // Will trigger default selection
+                        }
+                        return prev;
+                    });
+                }
             })
             .subscribe();
 
@@ -256,13 +269,27 @@ export function useChat() {
             if (currentChannel.name === 'General' && newMsg.recipient_id !== null) return;
             if (recipient) return; // Extra safety: don't update if in DM mode
 
-            // Avoid duplicates if we somehow get double events (unlikely with different filters)
+            // Avoid duplicates
             setMessages(prev => {
+                // Check if already exists by real ID
                 if (prev.find(m => m.id === newMsg.id)) return prev;
 
-                // We need to fetch the user details separately
-                // (Optimizing to not fetch if we already have it would be nice, but for now safe)
-                return [...prev, newMsg as any]; // Optimistic add, will update with user data async
+                // Check if this is a real-time update for an optimistic message (temp-xxx)
+                // Match by content + user + close timestamp
+                const existingOptimistic = prev.find(m =>
+                    m.id.startsWith('temp-') &&
+                    m.content === newMsg.content &&
+                    m.user_id === newMsg.user_id &&
+                    Math.abs(new Date(m.sent_at || 0).getTime() - new Date(newMsg.sent_at || 0).getTime()) < 10000
+                );
+
+                if (existingOptimistic) {
+                    // Replace the optimistic message with the real one
+                    return prev.map(m => m.id === existingOptimistic.id ? { ...newMsg } : m) as any;
+                }
+
+                // New message - add it
+                return [...prev, newMsg as any];
             });
 
             // Only fetch user details if we have a valid user_id

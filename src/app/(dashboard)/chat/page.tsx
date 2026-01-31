@@ -6,9 +6,11 @@ import { useChat } from '@/hooks/useChat';
 import { ChatSidebar } from './components/ChatSidebar';
 import { SpacesChatArea } from './components/SpacesChatArea';
 import { DirectMessagesArea } from './components/DirectMessagesArea';
+import { FilesArea } from './components/FilesArea';
 
 function ChatPageContent() {
-    const [activeTab, setActiveTab] = useState<'spaces' | 'dms'>('spaces');
+    const [activeTab, setActiveTab] = useState<'spaces' | 'files' | 'dms'>('spaces');
+    const [selectedFileChannelId, setSelectedFileChannelId] = useState<string | null>(null);
     const searchParams = useSearchParams();
     const router = useRouter();
     const {
@@ -50,18 +52,25 @@ function ChatPageContent() {
         if (activeTab === 'spaces') {
             const channel = channels.find(c => c.id === id);
             if (channel) setCurrentChannel(channel);
-        } else {
+        } else if (activeTab === 'dms') {
             const user = users.find(u => u.id === id);
             if (user) setRecipient(user);
         }
     };
 
     // Handler to switch tabs and reset state
-    const handleTabChange = (tab: 'spaces' | 'dms') => {
+    const handleTabChange = (tab: 'spaces' | 'files' | 'dms') => {
         setActiveTab(tab);
         if (tab === 'spaces') {
             setRecipient(null); // Clear private chat when switching to spaces
+        } else if (tab === 'files') {
+            // Keep selectedFileChannelId as is
         }
+    };
+
+    // Handler for selecting file channel in Files tab
+    const handleSelectFileChannel = (channelId: string | null) => {
+        setSelectedFileChannelId(channelId);
     };
 
     return (
@@ -73,6 +82,9 @@ function ChatPageContent() {
                 onSelectChat={handleSelectChat}
                 channels={channels}
                 users={users}
+                selectedFileChannelId={selectedFileChannelId}
+                onSelectFileChannel={handleSelectFileChannel}
+                currentUser={currentUser}
             />
 
             {activeTab === 'spaces' ? (
@@ -97,6 +109,19 @@ function ChatPageContent() {
                     pinMessage={pinMessage}
                     unpinMessage={unpinMessage}
                     editMessage={editMessage}
+                    onChannelDeleted={() => {
+                        // Switch to first available channel (General)
+                        const generalChannel = channels.find(c => c.name === 'General' || c.id !== currentChannel?.id);
+                        if (generalChannel) {
+                            setCurrentChannel(generalChannel);
+                        }
+                    }}
+                />
+            ) : activeTab === 'files' ? (
+                <FilesArea
+                    selectedChannelId={selectedFileChannelId}
+                    channels={channels}
+                    currentUser={currentUser}
                 />
             ) : (
                 <DirectMessagesArea
@@ -122,4 +147,3 @@ export default function ChatPage() {
         </Suspense>
     );
 }
-

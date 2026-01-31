@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 interface ServerStats {
@@ -20,7 +20,7 @@ export function ServerStats() {
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -84,7 +84,8 @@ export function ServerStats() {
             console.error('Error fetching server stats:', error);
             setIsLoading(false);
         }
-    }, [supabase]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         fetchStats();
