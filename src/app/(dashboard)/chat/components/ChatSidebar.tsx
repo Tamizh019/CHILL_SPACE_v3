@@ -71,17 +71,18 @@ export function ChatSidebar({
         <div className="w-80 border-r border-white/5 bg-black/20 flex flex-col">
             {/* Header */}
             <div className="p-6 pb-4">
-                <h1 className="font-heading text-2xl font-bold text-white mb-6">Chat</h1>
+                <h1 className="font-heading text-2xl font-bold text-white mb-6">Chat & Files</h1>
 
                 {/* Toggle Switch - 3 tabs */}
                 <div className="p-1 rounded-xl bg-white/5 flex mb-4">
                     <button
                         onClick={() => onTabChange('spaces')}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold font-heading transition-all ${activeTab === 'spaces'
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold font-heading transition-all flex items-center justify-center gap-1 ${activeTab === 'spaces'
                             ? 'bg-white/10 text-white shadow-sm'
                             : 'text-slate-500 hover:text-white'
                             }`}
                     >
+                        <span className="material-icons-round text-xs">diversity_3</span>
                         Spaces
                     </button>
                     <button
@@ -96,11 +97,12 @@ export function ChatSidebar({
                     </button>
                     <button
                         onClick={() => onTabChange('dms')}
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold font-heading transition-all ${activeTab === 'dms'
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold font-heading transition-all flex items-center justify-center gap-1 ${activeTab === 'dms'
                             ? 'bg-white/10 text-white shadow-sm'
                             : 'text-slate-500 hover:text-white'
                             }`}
                     >
+                        <span className="material-icons-round text-xs">forum</span>
                         DMs
                     </button>
                 </div>

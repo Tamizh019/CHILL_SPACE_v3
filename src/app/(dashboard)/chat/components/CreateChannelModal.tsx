@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { IconPicker } from './IconPicker';
 
 interface CreateChannelModalProps {
     isOpen: boolean;
@@ -18,6 +19,7 @@ export function CreateChannelModal({
 }: CreateChannelModalProps) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [selectedIcon, setSelectedIcon] = useState('tag');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +49,7 @@ export function CreateChannelModal({
                 .insert({
                     name: name.trim(),
                     description: description.trim() || null,
+                    icon: selectedIcon,
                     created_by: currentUserId
                 });
 
@@ -56,6 +59,7 @@ export function CreateChannelModal({
             onClose();
             setName('');
             setDescription('');
+            setSelectedIcon('tag');
         } catch (err: any) {
             console.error('Error creating channel:', err);
             setError(err.message || 'Failed to create channel');
@@ -104,6 +108,12 @@ export function CreateChannelModal({
                             />
                         </div>
                     </div>
+
+                    {/* Icon Picker */}
+                    <IconPicker
+                        selectedIcon={selectedIcon}
+                        onSelectIcon={setSelectedIcon}
+                    />
 
                     {/* Description */}
                     <div className="space-y-1.5">

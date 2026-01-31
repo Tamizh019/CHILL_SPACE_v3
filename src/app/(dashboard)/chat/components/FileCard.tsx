@@ -85,14 +85,14 @@ export function FileCard({
     // Grid view (default)
     return (
         <div
-            className="group relative bg-[#1a1a1a] border border-white/5 rounded-2xl overflow-hidden
+            className="group relative bg-[#1a1a1a] border border-white/5 rounded-xl overflow-hidden
                        hover:border-violet-500/30 transition-all duration-200 cursor-pointer"
             onClick={() => onSelect(file)}
             onMouseEnter={() => setShowReactions(true)}
             onMouseLeave={() => setShowReactions(false)}
         >
-            {/* Preview Area */}
-            <div className="aspect-square bg-black/30 flex items-center justify-center relative overflow-hidden">
+            {/* Preview Area - More compact */}
+            <div className="aspect-[4/3] bg-black/30 flex items-center justify-center relative overflow-hidden">
                 {canPreview ? (
                     isVideo(file.file_type) ? (
                         <video
@@ -109,11 +109,11 @@ export function FileCard({
                         />
                     )
                 ) : (
-                    <div className="flex flex-col items-center gap-2">
-                        <span className={`material-icons-round text-5xl ${typeInfo.color}`}>
+                    <div className="flex flex-col items-center gap-1.5">
+                        <span className={`material-icons-round text-4xl ${typeInfo.color}`}>
                             {typeInfo.icon}
                         </span>
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
+                        <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">
                             {file.file_type.split('/')[1]?.toUpperCase() || 'FILE'}
                         </span>
                     </div>
@@ -157,9 +157,9 @@ export function FileCard({
                 )}
             </div>
 
-            {/* Info Section */}
-            <div className="p-3 space-y-2">
-                <p className="font-medium text-white text-sm truncate group-hover:text-violet-300 transition-colors">
+            {/* Info Section - More compact */}
+            <div className="p-2.5 space-y-1.5">
+                <p className="font-medium text-white text-xs truncate group-hover:text-violet-300 transition-colors">
                     {file.display_name}
                 </p>
 

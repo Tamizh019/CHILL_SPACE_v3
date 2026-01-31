@@ -36,6 +36,8 @@ export function SpacesList({ channels, selectedId, onSelect }: SpacesListProps) 
             </div>
             {channels.map(channel => {
                 const isActive = selectedId === channel.id;
+                // Use channel icon if available, otherwise fall back to hash-based selection
+                const channelIcon = (channel as any).icon || getChannelStyles(channel.name || 'channel').icon;
                 const style = getChannelStyles(channel.name || 'channel');
 
                 return (
@@ -48,7 +50,7 @@ export function SpacesList({ channels, selectedId, onSelect }: SpacesListProps) 
                             }`}
                     >
                         <div className={`w-8 h-8 rounded-lg ${style.bg} ${style.color} flex items-center justify-center`}>
-                            <span className="material-icons-round text-lg">{style.icon}</span>
+                            <span className="material-icons-round text-lg">{channelIcon}</span>
                         </div>
                         <div className="flex-1">
                             <div className={`font-heading font-semibold text-sm ${isActive ? 'text-white' : 'text-slate-300'}`}>

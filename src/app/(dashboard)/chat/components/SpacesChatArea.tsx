@@ -12,6 +12,9 @@ import { ChatDemoModal } from './ChatDemoModal';
 import { ChannelSettingsModal } from './ChannelSettingsModal';
 import { useFiles, FileRecord } from '@/hooks/useFiles';
 import { getFileTypeInfo } from '@/utils/fileUtils';
+import { MarkdownComposerModal } from './MarkdownComposerModal';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { FilePreviewPanel } from './FilePreviewPanel';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'] & {
@@ -24,6 +27,7 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
     pinned_by_username?: string | null;
     edited_at?: string | null;
     reply_to_id?: string | null;
+    is_markdown?: boolean | null;
 };
 type User = Database['public']['Tables']['users']['Row'];
 
@@ -48,6 +52,7 @@ interface SpacesChatAreaProps {
     unpinMessage: (id: string) => Promise<boolean>;
     editMessage: (id: string, content: string) => Promise<boolean>;
     onChannelDeleted?: () => void;
+    onSwitchToFiles?: () => void;
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥'];
@@ -75,7 +80,8 @@ export function SpacesChatArea({
     pinMessage,
     unpinMessage,
     editMessage,
-    onChannelDeleted
+    onChannelDeleted,
+    onSwitchToFiles
 }: SpacesChatAreaProps) {
     const [inputValue, setInputValue] = useState('');
     const [showPinnedPanel, setShowPinnedPanel] = useState(false);
@@ -92,6 +98,8 @@ export function SpacesChatArea({
     const [showDemoModal, setShowDemoModal] = useState(false);
     const [mentionTab, setMentionTab] = useState<'members' | 'files'>('members');
     const [activeFileMention, setActiveFileMention] = useState<FileRecord | null>(null);
+    const [showMarkdownComposer, setShowMarkdownComposer] = useState(false);
+    const [showAddMenu, setShowAddMenu] = useState(false);
 
     // Fetch files for current channel (for @ mentions)
     const { files: channelFiles, getFileUrl } = useFiles(currentChannel?.id !== 'announcements' ? currentChannel?.id : undefined);
@@ -147,6 +155,14 @@ export function SpacesChatArea({
             setReplyingTo(null);
             scrollToBottom();
         }
+    };
+
+    const handleMarkdownSend = async (markdownContent: string) => {
+        // For now, we'll send markdown as regular message with a prefix
+        // In production, you'd want to add is_markdown flag to database
+        await sendMessage(`[MD]\n${markdownContent}`, replyingTo?.id);
+        setReplyingTo(null);
+        scrollToBottom();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -257,49 +273,123 @@ export function SpacesChatArea({
                                 </code>
                             );
                         }
-                        // Process mentions
-                        const mentionParts = part.split(MENTION_REGEX);
-                        return mentionParts.map((mp, j) => {
-                            if (j % 2 === 1) {
-                                // Check if this mention matches a file
-                                const matchedFile = channelFiles.find(f =>
-                                    (f.display_name?.toLowerCase() === mp.toLowerCase()) ||
-                                    (f.original_filename?.toLowerCase() === mp.toLowerCase()) ||
-                                    (f.display_name?.toLowerCase().includes(mp.toLowerCase())) ||
-                                    (f.original_filename?.toLowerCase().includes(mp.toLowerCase()))
+
+                        // Process file mentions first - look for @filename patterns
+                        // Check if any file name exists in this part prefixed with @
+                        let processedPart = part;
+                        const fileElements: { start: number; end: number; file: FileRecord; originalText: string }[] = [];
+
+                        // Find all file mentions
+                        for (const file of channelFiles) {
+                            const fileName = file.display_name || file.original_filename;
+                            const mentionPattern = `@${fileName}`;
+                            const lowerPart = processedPart.toLowerCase();
+                            const lowerMention = mentionPattern.toLowerCase();
+
+                            let searchIndex = 0;
+                            while (true) {
+                                const idx = lowerPart.indexOf(lowerMention, searchIndex);
+                                if (idx === -1) break;
+
+                                // Check this doesn't overlap with existing matches
+                                const overlaps = fileElements.some(
+                                    fe => (idx >= fe.start && idx < fe.end) || (idx + mentionPattern.length > fe.start && idx + mentionPattern.length <= fe.end)
                                 );
 
-                                if (matchedFile) {
-                                    // Render as file mention with icon - clickable
-                                    const fileTypeInfo = getFileTypeInfo(matchedFile.file_type);
+                                if (!overlaps) {
+                                    fileElements.push({
+                                        start: idx,
+                                        end: idx + mentionPattern.length,
+                                        file: file,
+                                        originalText: processedPart.substring(idx, idx + mentionPattern.length)
+                                    });
+                                }
+                                searchIndex = idx + 1;
+                            }
+                        }
+
+                        // Sort by position
+                        fileElements.sort((a, b) => a.start - b.start);
+
+                        // If no file mentions, process regular mentions
+                        if (fileElements.length === 0) {
+                            const mentionParts = part.split(MENTION_REGEX);
+                            return mentionParts.map((mp, j) => {
+                                if (j % 2 === 1) {
+                                    // Regular user mention
                                     return (
-                                        <span
-                                            key={j}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveFileMention(activeFileMention?.id === matchedFile.id ? null : matchedFile);
-                                            }}
-                                            className="relative inline-flex items-center gap-1.5 px-2 py-1 mx-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-medium border border-emerald-400/30 cursor-pointer hover:bg-emerald-500/30 transition-colors"
-                                            title="Click for options"
-                                        >
-                                            <span className={`material-icons-round text-xs ${fileTypeInfo.color}`}>
-                                                {fileTypeInfo.icon}
-                                            </span>
-                                            <span className="text-sm">@{mp}</span>
-                                            <span className="material-icons-round text-xs text-emerald-400/70">expand_more</span>
+                                        <span key={j} className="px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-500/40 text-violet-200 font-medium border border-violet-400/20">
+                                            @{mp}
                                         </span>
                                     );
                                 }
+                                return mp;
+                            });
+                        }
 
-                                // Regular user mention
-                                return (
-                                    <span key={j} className="px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-500/40 text-violet-200 font-medium border border-violet-400/20">
-                                        @{mp}
-                                    </span>
-                                );
+                        // Build the result with file mentions
+                        const result: React.ReactNode[] = [];
+                        let lastEnd = 0;
+
+                        fileElements.forEach((fe, idx) => {
+                            // Add text before this mention
+                            if (fe.start > lastEnd) {
+                                const textBefore = part.substring(lastEnd, fe.start);
+                                // Process user mentions in text before
+                                const mentionParts = textBefore.split(MENTION_REGEX);
+                                mentionParts.forEach((mp, j) => {
+                                    if (j % 2 === 1) {
+                                        result.push(
+                                            <span key={`before-${idx}-${j}`} className="px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-500/40 text-violet-200 font-medium border border-violet-400/20">
+                                                @{mp}
+                                            </span>
+                                        );
+                                    } else if (mp) {
+                                        result.push(mp);
+                                    }
+                                });
                             }
-                            return mp;
+
+                            // Add the file mention
+                            const fileTypeInfo = getFileTypeInfo(fe.file.file_type);
+                            result.push(
+                                <span
+                                    key={`file-${idx}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveFileMention(activeFileMention?.id === fe.file.id ? null : fe.file);
+                                    }}
+                                    className="relative inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-lg bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-200 font-medium border border-violet-400/30 cursor-pointer hover:from-violet-500/30 hover:to-purple-500/30 hover:border-violet-400/50 transition-all shadow-sm shadow-violet-500/10"
+                                    title={`📎 ${fe.file.display_name || fe.file.original_filename} - Click to view`}
+                                >
+                                    <span className={`material-icons-round text-base ${fileTypeInfo.color}`}>
+                                        {fileTypeInfo.icon}
+                                    </span>
+                                    <span className="material-icons-round text-xs text-violet-300/70">expand_more</span>
+                                </span>
+                            );
+
+                            lastEnd = fe.end;
                         });
+
+                        // Add remaining text after last mention
+                        if (lastEnd < part.length) {
+                            const textAfter = part.substring(lastEnd);
+                            const mentionParts = textAfter.split(MENTION_REGEX);
+                            mentionParts.forEach((mp, j) => {
+                                if (j % 2 === 1) {
+                                    result.push(
+                                        <span key={`after-${j}`} className="px-1.5 py-0.5 mx-0.5 rounded-md bg-violet-500/40 text-violet-200 font-medium border border-violet-400/20">
+                                            @{mp}
+                                        </span>
+                                    );
+                                } else if (mp) {
+                                    result.push(mp);
+                                }
+                            });
+                        }
+
+                        return result;
                     })}
                 </span>
             );
@@ -334,12 +424,16 @@ export function SpacesChatArea({
             if (!target.closest('[data-message-menu]')) {
                 setActiveMessageMenu(null);
             }
+            // Close add menu when clicking outside
+            if (!target.closest('[data-add-menu]') && !target.closest('[data-add-button]')) {
+                setShowAddMenu(false);
+            }
         };
-        if (activeMessageMenu) {
+        if (activeMessageMenu || showAddMenu) {
             document.addEventListener('click', handleClickOutside);
             return () => document.removeEventListener('click', handleClickOutside);
         }
-    }, [activeMessageMenu]);
+    }, [activeMessageMenu, showAddMenu]);
 
     return (
         <div className="flex-1 flex overflow-hidden">
@@ -453,8 +547,18 @@ export function SpacesChatArea({
                                             <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                                 <span className="font-semibold text-sm text-white">{msg.username}</span>
                                                 {messageRole && messageRole !== 'user' && (
-                                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-medium uppercase">
-                                                        {messageRole}
+                                                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide
+                                                        ${messageRole === 'admin'
+                                                            ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300 shadow-sm shadow-amber-500/10'
+                                                            : messageRole === 'moderator'
+                                                                ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-300 shadow-sm shadow-violet-500/10'
+                                                                : messageRole === 'vip'
+                                                                    ? 'bg-gradient-to-r from-pink-500/30 via-purple-500/30 to-cyan-500/30 border-2 border-pink-400/50 shadow-lg shadow-pink-500/30 animate-pulse'
+                                                                    : 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-300 shadow-sm shadow-violet-500/10'
+                                                        }`}>
+                                                        <span className={messageRole === 'vip' ? 'bg-gradient-to-r from-pink-300 via-purple-200 to-cyan-300 bg-clip-text text-transparent' : ''}>
+                                                            {messageRole === 'vip' ? '✨ VIP ✨' : messageRole}
+                                                        </span>
                                                     </span>
                                                 )}
                                                 <span className="text-[10px] text-slate-500">
@@ -502,13 +606,17 @@ export function SpacesChatArea({
                                             {/* The Message */}
                                             <div
                                                 id={`msg-${msg.id}`}
-                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-colors duration-500 whitespace-pre-wrap break-words
+                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-colors duration-500 ${msg.content?.startsWith('[MD]\n') ? '' : 'whitespace-pre-wrap break-words'}
                                                 ${isCurrentUser
-                                                        ? 'bg-violet-600 text-white rounded-br-md'
+                                                        ? 'bg-violet-900/40 border border-violet-500/20 text-violet-50 rounded-br-md'
                                                         : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
                                                     }`}
                                             >
-                                                {renderMessageContent(msg.content || '')}
+                                                {msg.content?.startsWith('[MD]\n') ? (
+                                                    <MarkdownRenderer content={msg.content.substring(5)} />
+                                                ) : (
+                                                    renderMessageContent(msg.content || '')
+                                                )}
                                             </div>
                                         </div>
 
@@ -816,13 +924,54 @@ export function SpacesChatArea({
                         )}
 
                         <div
-                            className={`bg-[#1e1e1e] border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3
+                            className={`bg-[#1e1e1e] border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3 relative
                                 ${isAnnouncement && !isAdmin ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={() => isAnnouncement && !isAdmin && setShowRestrictedModal(true)}
                         >
-                            <button type="button" className="text-slate-500 hover:text-white transition-colors" disabled={isAnnouncement && !isAdmin}>
-                                <span className="material-icons-round text-xl">add_circle</span>
-                            </button>
+                            {/* Add Button with Menu */}
+                            <div className="relative" data-add-button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddMenu(!showAddMenu)}
+                                    className="text-slate-500 hover:text-white transition-colors"
+                                    disabled={isAnnouncement && !isAdmin}
+                                >
+                                    <span className="material-icons-round text-xl">add_circle</span>
+                                </button>
+
+                                {/* Add Menu Dropdown */}
+                                {showAddMenu && (
+                                    <div className="absolute bottom-full left-0 mb-2 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden w-56 animate-scale-in z-50" data-add-menu>
+                                        <button
+                                            onClick={() => {
+                                                setShowMarkdownComposer(true);
+                                                setShowAddMenu(false);
+                                            }}
+                                            className="w-full px-4 py-3 text-left text-sm text-slate-300 hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                        >
+                                            <span className="material-icons-round text-lg text-violet-400">edit_note</span>
+                                            <div>
+                                                <div className="font-medium text-white">Send as Markdown</div>
+                                                <div className="text-xs text-slate-500">Format with headers, lists, etc.</div>
+                                            </div>
+                                        </button>
+                                        <div className="border-t border-white/5" />
+                                        <button
+                                            onClick={() => {
+                                                setShowAddMenu(false);
+                                                // Add file upload functionality here if needed
+                                            }}
+                                            className="w-full px-4 py-3 text-left text-sm text-slate-300 hover:bg-white/5 flex items-center gap-3 transition-colors"
+                                        >
+                                            <span className="material-icons-round text-lg text-emerald-400">attach_file</span>
+                                            <div>
+                                                <div className="font-medium text-white">Upload File</div>
+                                                <div className="text-xs text-slate-500">Share images, docs, etc.</div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                             <input
                                 ref={inputRef}
                                 type="text"
@@ -965,84 +1114,43 @@ export function SpacesChatArea({
             )}
 
             {/* File Mention Popup Modal */}
-            {activeFileMention && (
-                <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                    onClick={() => setActiveFileMention(null)}
-                >
-                    <div
-                        className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* File Info */}
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${getFileTypeInfo(activeFileMention.file_type).color} bg-white/5`}>
-                                <span className="material-icons-round text-2xl">{getFileTypeInfo(activeFileMention.file_type).icon}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white truncate">{activeFileMention.display_name || activeFileMention.original_filename}</h3>
-                                <p className="text-xs text-slate-500">
-                                    {activeFileMention.file_type.split('/')[1]?.toUpperCase()} • Uploaded by {activeFileMention.uploader?.username || 'Unknown'}
-                                </p>
-                            </div>
-                        </div>
+            {/* File Preview Panel */}
+            <FilePreviewPanel
+                file={activeFileMention as any}
+                onClose={() => setActiveFileMention(null)}
+                onDownload={async (file) => {
+                    try {
+                        const url = await getFileUrl(file.storage_path);
+                        if (url) {
+                            const response = await fetch(url);
+                            const blob = await response.blob();
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = blobUrl;
+                            a.download = file.original_filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(blobUrl);
+                        }
+                    } catch (error) {
+                        console.error('Download failed:', error);
+                    }
+                    setActiveFileMention(null);
+                }}
+                onViewInFiles={(file) => {
+                    setActiveFileMention(null);
+                    onSwitchToFiles?.();
+                }}
+                getFileUrl={getFileUrl}
+            />
 
-                        {/* Action Buttons */}
-                        <div className="space-y-2">
-                            {/* Download Button */}
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const url = await getFileUrl(activeFileMention.storage_path);
-                                        if (url) {
-                                            const response = await fetch(url);
-                                            const blob = await response.blob();
-                                            const blobUrl = window.URL.createObjectURL(blob);
-                                            const a = document.createElement('a');
-                                            a.href = blobUrl;
-                                            a.download = activeFileMention.original_filename;
-                                            document.body.appendChild(a);
-                                            a.click();
-                                            document.body.removeChild(a);
-                                            window.URL.revokeObjectURL(blobUrl);
-                                        }
-                                    } catch (error) {
-                                        console.error('Download failed:', error);
-                                    }
-                                    setActiveFileMention(null);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 transition-colors"
-                            >
-                                <span className="material-icons-round">download</span>
-                                <span className="font-medium">Download File</span>
-                            </button>
-
-                            {/* View in Files Button */}
-                            <button
-                                onClick={() => {
-                                    // This would typically navigate to files tab - for now just close
-                                    // You could add a callback prop to switch tabs
-                                    setActiveFileMention(null);
-                                    // Scroll to show a notification or open files tab
-                                    alert(`File "${activeFileMention.display_name || activeFileMention.original_filename}" is in the Files section. Switch to Files tab to view.`);
-                                }}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors"
-                            >
-                                <span className="material-icons-round">folder_open</span>
-                                <span className="font-medium">View in Files</span>
-                            </button>
-                        </div>
-
-                        {/* Close */}
-                        <button
-                            onClick={() => setActiveFileMention(null)}
-                            className="w-full mt-4 py-2 text-sm text-slate-500 hover:text-white transition-colors"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* Markdown Composer Modal */}
+            <MarkdownComposerModal
+                isOpen={showMarkdownComposer}
+                onClose={() => setShowMarkdownComposer(false)}
+                onSend={handleMarkdownSend}
+            />
         </div>
     );
 }

@@ -9,35 +9,38 @@ export interface FileTypeInfo {
 // Get icon and color for file type
 export function getFileTypeInfo(mimeType: string): FileTypeInfo {
     if (mimeType.startsWith('image/')) {
-        return { icon: 'image', color: 'text-emerald-400', category: 'image' };
+        return { icon: 'photo', color: 'text-emerald-400', category: 'image' };
     }
     if (mimeType.startsWith('video/')) {
-        return { icon: 'movie', color: 'text-purple-400', category: 'video' };
+        return { icon: 'videocam', color: 'text-purple-400', category: 'video' };
     }
     if (mimeType.startsWith('audio/')) {
-        return { icon: 'headphones', color: 'text-pink-400', category: 'audio' };
+        return { icon: 'audio_file', color: 'text-pink-400', category: 'audio' };
     }
     if (mimeType === 'application/pdf') {
-        return { icon: 'picture_as_pdf', color: 'text-red-400', category: 'document' };
+        return { icon: 'picture_as_pdf', color: 'text-red-500', category: 'document' };
+    }
+    if (mimeType === 'text/csv' || mimeType.includes('csv')) {
+        return { icon: 'grid_on', color: 'text-green-500', category: 'document' };
     }
     if (mimeType.includes('word') || mimeType.includes('document')) {
-        return { icon: 'description', color: 'text-blue-400', category: 'document' };
+        return { icon: 'article', color: 'text-blue-500', category: 'document' };
     }
     if (mimeType.includes('sheet') || mimeType.includes('excel')) {
-        return { icon: 'table_chart', color: 'text-green-400', category: 'document' };
+        return { icon: 'view_module', color: 'text-emerald-500', category: 'document' };
     }
     if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) {
-        return { icon: 'slideshow', color: 'text-orange-400', category: 'document' };
+        return { icon: 'co_present', color: 'text-orange-500', category: 'document' };
     }
     if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) {
-        return { icon: 'folder_zip', color: 'text-yellow-400', category: 'archive' };
+        return { icon: 'folder_zip', color: 'text-amber-400', category: 'archive' };
     }
     if (mimeType.includes('javascript') || mimeType.includes('typescript') || mimeType.includes('json') ||
         mimeType.includes('html') || mimeType.includes('css') || mimeType.includes('python') ||
         mimeType.includes('java') || mimeType.includes('text/plain')) {
-        return { icon: 'code', color: 'text-cyan-400', category: 'code' };
+        return { icon: 'integration_instructions', color: 'text-cyan-400', category: 'code' };
     }
-    return { icon: 'insert_drive_file', color: 'text-slate-400', category: 'other' };
+    return { icon: 'draft', color: 'text-slate-400', category: 'other' };
 }
 
 // Format file size to human readable

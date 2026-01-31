@@ -33,19 +33,77 @@ function ChatPageContent() {
         editMessage
     } = useChat();
 
-    // Deep Link Logic
+    // State for URL synchronization
+    const [isUrlSyncing, setIsUrlSyncing] = useState(true);
+
+    // 1. Initial Load: Restore state from URL
     useEffect(() => {
+        if (!isUrlSyncing) return;
+
+        // Wait for data to be available
+        if (channels.length === 0) return;
+
+        const tab = searchParams.get('tab') as 'spaces' | 'files' | 'dms' | null;
+        const channelId = searchParams.get('channelId');
         const userId = searchParams.get('userId');
-        if (userId && users.length > 0) {
+        const fileChannelId = searchParams.get('fileChannelId');
+
+        // Restore Tab
+        if (tab && ['spaces', 'files', 'dms'].includes(tab)) {
+            setActiveTab(tab);
+        }
+
+        // Restore Channel (Spaces)
+        if (tab === 'spaces' || !tab) { // Default to spaces
+            if (channelId) {
+                const targetChannel = channels.find(c => c.id === channelId);
+                if (targetChannel) {
+                    setCurrentChannel(targetChannel);
+                }
+            }
+        }
+
+        // Restore DM (Direct Messages)
+        if (tab === 'dms' && userId && users.length > 0) {
             const targetUser = users.find(u => u.id === userId);
             if (targetUser) {
                 setRecipient(targetUser);
-                setActiveTab('dms');
-                // Clean up URL
-                router.replace('/chat');
             }
         }
-    }, [searchParams, users, setRecipient, router]);
+
+        // Restore File Channel (Files)
+        if (tab === 'files') {
+            if (fileChannelId) {
+                setSelectedFileChannelId(fileChannelId);
+            }
+        }
+
+        // Mark initial sync as done to allow updates to push to URL
+        setIsUrlSyncing(false);
+    }, [searchParams, channels, users, isUrlSyncing]);
+
+    // 2. Sync State changes to URL
+    useEffect(() => {
+        if (isUrlSyncing) return; // Don't push to URL while restoring
+
+        const params = new URLSearchParams();
+
+        // Active Tab
+        params.set('tab', activeTab);
+
+        // Context based on tab
+        if (activeTab === 'spaces' && currentChannel) {
+            params.set('channelId', currentChannel.id);
+        } else if (activeTab === 'dms' && recipient) {
+            params.set('userId', recipient.id);
+        } else if (activeTab === 'files' && selectedFileChannelId) {
+            params.set('fileChannelId', selectedFileChannelId);
+        }
+
+        // Deep link handling removal - we just replace with current state
+        router.replace(`/chat?${params.toString()}`, { scroll: false });
+
+    }, [activeTab, currentChannel, recipient, selectedFileChannelId, router, isUrlSyncing]);
 
     // Handler to switch channels based on ID
     const handleSelectChat = (id: string) => {
@@ -64,7 +122,10 @@ function ChatPageContent() {
         if (tab === 'spaces') {
             setRecipient(null); // Clear private chat when switching to spaces
         } else if (tab === 'files') {
-            // Keep selectedFileChannelId as is
+            // Include current channel if switching from spaces/DMs to files for better UX
+            if (!selectedFileChannelId && currentChannel) {
+                setSelectedFileChannelId(currentChannel.id);
+            }
         }
     };
 
@@ -114,6 +175,13 @@ function ChatPageContent() {
                         const generalChannel = channels.find(c => c.name === 'General' || c.id !== currentChannel?.id);
                         if (generalChannel) {
                             setCurrentChannel(generalChannel);
+                        }
+                    }}
+                    onSwitchToFiles={() => {
+                        setActiveTab('files');
+                        // Set the file channel to current channel
+                        if (currentChannel) {
+                            setSelectedFileChannelId(currentChannel.id);
                         }
                     }}
                 />
