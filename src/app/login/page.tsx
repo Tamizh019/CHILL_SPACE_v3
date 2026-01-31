@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { ForgotPasswordModal } from "./components/ForgotPasswordModal";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
@@ -117,9 +119,13 @@ export default function LoginPage() {
                                     <label className="block text-xs text-[#888] font-medium uppercase tracking-wider">
                                         Password
                                     </label>
-                                    <Link href="#" className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowForgotPassword(true)}
+                                        className="text-xs text-violet-400 hover:text-violet-300 transition-colors focus:outline-none"
+                                    >
                                         Forgot?
-                                    </Link>
+                                    </button>
                                 </div>
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555]" />
@@ -198,6 +204,12 @@ export default function LoginPage() {
                     </div>
                 </div>
             </motion.div>
+
+            {/* Forgot Password Modal */}
+            <ForgotPasswordModal
+                isOpen={showForgotPassword}
+                onClose={() => setShowForgotPassword(false)}
+            />
         </div>
     );
 }

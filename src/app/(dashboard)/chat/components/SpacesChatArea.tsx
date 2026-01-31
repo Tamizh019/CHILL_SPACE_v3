@@ -280,7 +280,14 @@ export function SpacesChatArea({
                         const fileElements: { start: number; end: number; file: FileRecord; originalText: string }[] = [];
 
                         // Find all file mentions
-                        for (const file of channelFiles) {
+                        // Sort files by name length descending to match longest possible names first
+                        const sortedFiles = [...channelFiles].sort((a, b) => {
+                            const lenA = (a.display_name || a.original_filename).length;
+                            const lenB = (b.display_name || b.original_filename).length;
+                            return lenB - lenA;
+                        });
+
+                        for (const file of sortedFiles) {
                             const fileName = file.display_name || file.original_filename;
                             const mentionPattern = `@${fileName}`;
                             const lowerPart = processedPart.toLowerCase();

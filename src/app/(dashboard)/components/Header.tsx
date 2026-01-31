@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 const statuses = [
     { id: 'focusing', label: 'Focusing', color: 'bg-green-500', borderColor: 'border-green-500/30' },
@@ -12,7 +13,9 @@ const statuses = [
 export function Header() {
     const [currentStatus, setCurrentStatus] = useState('focusing');
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-    const [userInfo, setUserInfo] = useState<{ username: string | null; avatar_url: string | null } | null>(null);
+    // Added 'id' to userInfo type
+    const [userInfo, setUserInfo] = useState<{ id: string; username: string | null; avatar_url: string | null } | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -27,12 +30,12 @@ export function Header() {
 
                 if (error) {
                     console.error('Header: Error fetching user profile:', error.message);
-                    setUserInfo({ username: user.email?.split('@')[0] || 'User', avatar_url: null });
+                    setUserInfo({ id: user.id, username: user.email?.split('@')[0] || 'User', avatar_url: null });
                 } else if (profile) {
-                    setUserInfo(profile);
+                    setUserInfo({ id: user.id, ...profile });
                 } else {
                     // Fallback using email if profile missing
-                    setUserInfo({ username: user.email?.split('@')[0] || 'User', avatar_url: null });
+                    setUserInfo({ id: user.id, username: user.email?.split('@')[0] || 'User', avatar_url: null });
                 }
             }
         };
@@ -106,15 +109,18 @@ export function Header() {
                 </button>
 
                 {/* User Profile */}
-                <div className="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div
+                    className="flex items-center gap-3 pl-2 cursor-pointer group"
+                    onClick={() => router.push('/profile')}
+                >
                     {userInfo?.avatar_url ? (
                         <img
                             src={userInfo.avatar_url}
                             alt={userInfo.username || 'User'}
-                            className="w-9 h-9 rounded-full object-cover border border-white/10 shadow-[0_0_10px_rgba(139,92,246,0.3)]"
+                            className="w-9 h-9 rounded-full object-cover border border-white/10 shadow-[0_0_10px_rgba(139,92,246,0.3)] group-hover:border-violet-500/50 transition-colors"
                         />
                     ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium border border-white/10 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium border border-white/10 shadow-[0_0_10px_rgba(139,92,246,0.3)] group-hover:border-violet-500/50 transition-colors">
                             {userInfo?.username?.[0]?.toUpperCase() || 'U'}
                         </div>
                     )}

@@ -1,0 +1,89 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+
+export interface RecentItem {
+    id: string;
+    title: string;
+    subtitle: string;
+    icon: string;
+    path: string;
+    timestamp: number;
+}
+
+interface RecentActivityContextType {
+    recentItems: RecentItem[];
+}
+
+const RecentActivityContext = createContext<RecentActivityContextType | undefined>(undefined);
+
+// Helper to get nice names for routes
+const getRouteInfo = (path: string): { title: string; subtitle: string; icon: string } | null => {
+    if (path.startsWith('/chat')) return { title: 'Chat Room', subtitle: 'Messaging', icon: 'chat' };
+    if (path.startsWith('/work')) return { title: 'Workspace', subtitle: 'Productivity', icon: 'work' };
+    if (path.startsWith('/music')) return { title: 'Lofi Player', subtitle: 'Music', icon: 'music_note' };
+    if (path.startsWith('/games')) return { title: 'Arcade', subtitle: 'Mini-Games', icon: 'sports_esports' };
+    if (path.startsWith('/profile')) return { title: 'Profile', subtitle: 'Settings', icon: 'person' };
+    if (path.startsWith('/canvas')) return { title: 'Canvas', subtitle: 'Whiteboard', icon: 'brush' };
+    return null;
+};
+
+export function RecentActivityProvider({ children }: { children: React.ReactNode }) {
+    const [recentItems, setRecentItems] = useState<RecentItem[]>([]);
+    const pathname = usePathname();
+
+    useEffect(() => {
+        // Load from local storage
+        const stored = localStorage.getItem('chill_recent_activity');
+        if (stored) {
+            try {
+                setRecentItems(JSON.parse(stored));
+            } catch (e) {
+                console.error("Failed to parse recent activity", e);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!pathname || pathname === '/home' || pathname === '/') return;
+
+        const info = getRouteInfo(pathname);
+        if (!info) return;
+
+        setRecentItems(prev => {
+            // Remove existing entry for this path to avoid duplicates
+            const filtered = prev.filter(item => !item.path.startsWith(pathname) && !pathname.startsWith(item.path));
+
+            const newItem: RecentItem = {
+                id: pathname,
+                path: pathname,
+                title: info.title,
+                subtitle: info.subtitle,
+                icon: info.icon,
+                timestamp: Date.now()
+            };
+
+            // Keep top 3 most recent
+            const newItems = [newItem, ...filtered].slice(0, 3);
+
+            localStorage.setItem('chill_recent_activity', JSON.stringify(newItems));
+            return newItems;
+        });
+
+    }, [pathname]);
+
+    return (
+        <RecentActivityContext.Provider value={{ recentItems }}>
+            {children}
+        </RecentActivityContext.Provider>
+    );
+}
+
+export function useRecentActivity() {
+    const context = useContext(RecentActivityContext);
+    if (context === undefined) {
+        throw new Error('useRecentActivity must be used within a RecentActivityProvider');
+    }
+    return context;
+}

@@ -1,9 +1,9 @@
 'use client';
 
+import { useFocus } from '@/context/FocusContext';
+
 export function StatsCards() {
-    const focusStreak = 3;
-    const todayMinutes = 45;
-    const goalMinutes = 120;
+    const { focusStreak, todayMinutes, goalMinutes } = useFocus();
     const progress = Math.min((todayMinutes / goalMinutes) * 100, 100);
 
     return (
