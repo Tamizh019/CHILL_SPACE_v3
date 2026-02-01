@@ -77,7 +77,8 @@ npx supabase gen types typescript --project-id cmriyjrqkvpdchvbpnne > src/types/
 > [!TIP]
 > Run this command after any database schema changes to avoid TypeScript build errors.
 
-
+```
+---
 ##  Getting Started
 
 1. **Frontend:** `npm run dev`
