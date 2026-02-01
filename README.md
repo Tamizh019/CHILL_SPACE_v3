@@ -21,6 +21,8 @@
 
 We are building a premium, high-aesthetic environment where productivity meets vibes.
 
+---
+
 ## ✨ Features (Current & In-Development)
 
 ### 🎨 Aesthetics & UI
@@ -30,34 +32,47 @@ We are building a premium, high-aesthetic environment where productivity meets v
 - **Fluid Animations**: Powered by Framer Motion for smooth transitions, hover effects, and micro-interactions.
 - **Micro-Interactions**: Hover states, clicking animations, and dynamic tooltips make the app feel alive.
 
-### 🛠 Collaboration Tools
+### 🔐 Enhanced Security & Profile
+> *Robust protection for user data and identity.*
+- **Reauthentication Guard Rails**: Sensitive actions (Password Change, Account Deletion) require verification.
+- **Secure Email Updates**: Read-only defaults with a verification loop for email changes.
+- **Customizable Profiles**:
+  - Avatar Uploads to Supabase Storage.
+  - Role Badges (Admin, Moderator, Member).
+  - "Danger Zone" management.
 
+### 🧘 Focus & Productivity
+> *Stay in the zone with Gamified Focus.*
+- **Databased-Backed Streaks**: Focus streaks and "Time Focused" stats are now persisted in Supabase (moved away from localStorage).
+- **Daily Goals**: Track your daily focus targets.
+- **Focus Timer**: Dedicated distraction-free timer mode.
+
+### 🛠 Collaboration & Social
 #### 📢 Real-time Chat (Live)
 - **Instant Messaging**: Public Spaces and Private DMs powered by Supabase Realtime.
-- **Enhanced Reactions System**: 
-  - Smart Emoji Picker with active state highlighting.
-- **Message Features**: 
-  - Edit/Delete messages with history tracking.
-  - Link previews for rich content sharing.
-  - Reply threads / "Jump to Message".
-- **Server Stats Widget**: Real-time insights on community activity (Members, Messages Today, Active Channels).
+- **Rich Media**:
+  - **File Previews**: Native support for PDF and Text file previews directly in chat.
+  - **Mention System**: Tag files or users seamlessly.
+- **Enhanced Reactions**: Smart Emoji Picker with active state highlighting.
+- **Message Controls**: Edit/Delete history, Reply threads, and "Jump to Message".
 
-#### 👥 Presence & Community (Live)
-- **Online Members**: See who's active in real-time.
-- **User Profiles**: Custom avatars and status indicators.
+#### 👥 Friends & Activity
+- **"The Buzz" Feed**: Real-time activity feed showing what friends are up to.
+- **Game Integration**: Scores from "Galaxy Match" and other games sync to your profile and feed.
+- **Online Presence**: Real-time status indicators.
 
-#### 📚 Premium Features (Planned)
-- **💻 Code Editor**: Built-in environment for collaborative coding sessions. (Planned)
-- **📁 Project Spaces**: Dedicated vaults for files, threads, and college project management. (Planned)
-- **🎮 Interactive Games**: Mini-games to take a break and bond with your team. (Planned)
+### 🚀 Onboarding Flow
+- **Seamless Entry**: New users are guided through a personalized onboarding experience to set up their profile and preferences immediately after signup.
 
+---
 
-### 🏗 Tech Stack
+## 🏗 Tech Stack
 
 **Frontend** (In Progress)
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **UI Library**: [React 19](https://react.dev/)
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
 - **Animations**: [Framer Motion](https://www.framer.com/motion/)
 
 **Backend & Infrastructure** (Implemented)
