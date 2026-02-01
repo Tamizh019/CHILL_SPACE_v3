@@ -126,10 +126,8 @@ function ChatPageContent() {
         if (tab === 'spaces') {
             setRecipient(null); // Clear private chat when switching to spaces
         } else if (tab === 'files') {
-            // Include current channel if switching from spaces/DMs to files for better UX
-            if (!selectedFileChannelId && currentChannel) {
-                setSelectedFileChannelId(currentChannel.id);
-            }
+            // Always satisfy "show all files first" requirement
+            setSelectedFileChannelId(null);
         }
     };
 
