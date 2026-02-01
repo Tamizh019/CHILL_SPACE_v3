@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
 interface FocusContextType {
     focusStreak: number;
@@ -13,63 +14,115 @@ const FocusContext = createContext<FocusContextType | undefined>(undefined);
 export function FocusProvider({ children }: { children: React.ReactNode }) {
     const [focusStreak, setFocusStreak] = useState(0);
     const [todayMinutes, setTodayMinutes] = useState(0);
-    const goalMinutes = 120; // Hardcoded goal for now
+    const [isLoading, setIsLoading] = useState(true);
+    const goalMinutes = 120;
 
-    // Load initial data
+    // Helper to get today's date string for comparison
+    const getTodayString = () => new Date().toISOString().split('T')[0];
+
     useEffect(() => {
-        const loadData = () => {
-            const storedStreak = localStorage.getItem('chill_focus_streak');
-            const storedMinutes = localStorage.getItem('chill_today_minutes');
-            const lastActiveDate = localStorage.getItem('chill_last_active_date');
+        const initFocusParams = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
 
-            const today = new Date().toDateString();
+            if (!user) {
+                setIsLoading(false);
+                return;
+            }
 
-            if (storedStreak) setFocusStreak(parseInt(storedStreak, 10));
+            try {
+                // Fetch user data
+                const { data: profile, error } = await supabase
+                    .from('users')
+                    .select('focus_streak, today_minutes, last_focus_date, last_active_date')
+                    .eq('id', user.id)
+                    .single();
 
-            // Reset minutes if it's a new day
-            if (lastActiveDate !== today) {
-                setTodayMinutes(0);
-                localStorage.setItem('chill_today_minutes', '0');
-                localStorage.setItem('chill_last_active_date', today);
-
-                // Simple streak logic: if last active was yesterday, increment. 
-                // If longer, reset. If same day, keep.
-                // For simplicity MVP: we just keep the streak if accessed within 48h, else reset
-                const lastDate = lastActiveDate ? new Date(lastActiveDate) : new Date();
-                const diffTime = Math.abs(new Date().getTime() - lastDate.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays > 2) {
-                    setFocusStreak(1); // Reset
-                    localStorage.setItem('chill_focus_streak', '1');
-                } else if (lastActiveDate && lastActiveDate !== today) {
-                    const newStreak = (parseInt(storedStreak || '0') + 1);
-                    setFocusStreak(newStreak);
-                    localStorage.setItem('chill_focus_streak', newStreak.toString());
-                } else if (!lastActiveDate) {
-                    setFocusStreak(1);
-                    localStorage.setItem('chill_focus_streak', '1');
+                if (error || !profile) {
+                    console.error('Error fetching focus stats:', error);
+                    return;
                 }
 
-            } else {
-                if (storedMinutes) setTodayMinutes(parseInt(storedMinutes, 10));
+                const today = getTodayString();
+                const lastDate = profile.last_focus_date;
+
+                // --- Streak Logic ---
+                // If last_focus_date is yesterday, streak continues.
+                // If last_focus_date is today, streak is already counted for today (keep it).
+                // If last_focus_date is older than yesterday, reset streak to 0 (or 1 if we count today as start).
+
+                let newStreak = profile.focus_streak || 0;
+                let newTodayMinutes = profile.today_minutes || 0;
+
+                // Check for day reset
+                if (lastDate !== today) {
+                    // It's a new day!
+                    newTodayMinutes = 0; // Reset daily minutes
+
+                    // Check streak continuity
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayString = yesterday.toISOString().split('T')[0];
+
+                    if (lastDate === yesterdayString) {
+                        // Streak continues! increment? 
+                        // Usually streak increments when you *complete* a goal, or just by showing up.
+                        // Let's say showing up (visiting dashboard) counts.
+                        newStreak += 1;
+                    } else if (lastDate === today) {
+                        // Already handled
+                    } else {
+                        // Broken streak
+                        newStreak = 1;
+                    }
+
+                    // Update DB with new "Today" values immediately
+                    await supabase.from('users').update({
+                        focus_streak: newStreak,
+                        today_minutes: 0,
+                        last_focus_date: today,
+                        last_active_date: new Date().toISOString()
+                    }).eq('id', user.id);
+                }
+
+                setFocusStreak(newStreak);
+                setTodayMinutes(newTodayMinutes);
+
+            } catch (err) {
+                console.error('Failed to init focus context:', err);
+            } finally {
+                setIsLoading(false);
             }
         };
 
-        loadData();
+        initFocusParams();
     }, []);
 
-    // Timer to increment minutes
+    // Timer to increment minutes and sync to DB
     useEffect(() => {
-        const interval = setInterval(() => {
+        const supabase = createClient();
+        let interval: NodeJS.Timeout;
+
+        const updateDb = async (minutes: number) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase.from('users').update({
+                    today_minutes: minutes,
+                    last_active_date: new Date().toISOString()
+                }).eq('id', user.id);
+            }
+        };
+
+        interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
                 setTodayMinutes(prev => {
                     const newVal = prev + 1;
-                    localStorage.setItem('chill_today_minutes', newVal.toString());
+                    // Update DB every minute (debouncing not strictly necessary for 1 min interval)
+                    updateDb(newVal);
                     return newVal;
                 });
             }
-        }, 60000); // Every minute
+        }, 60000);
 
         return () => clearInterval(interval);
     }, []);

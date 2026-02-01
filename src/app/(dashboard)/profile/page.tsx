@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { ReauthModal } from './components/ReauthModal';
 
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'appearance' | 'notifications'>('profile');
@@ -17,14 +18,19 @@ export default function ProfilePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [reauthType, setReauthType] = useState<'password' | 'otp' | 'phrase' | null>(null);
+    const [pendingAction, setPendingAction] = useState<any>(null);
+    const [isEditingEmail, setIsEditingEmail] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const supabase = createClient();
 
+
     // User State
     const [user, setUser] = useState<any>(null);
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [dob, setDob] = useState('');
     const [role, setRole] = useState('Member');
@@ -46,9 +52,9 @@ export default function ProfilePage() {
                 if (profile) {
                     setUser(profile);
                     setUsername(profile.username || '');
+                    setEmail(authUser.email || '');
                     setAvatarUrl(profile.avatar_url);
                     setDob(profile.dob || '');
-                    // Assuming 'role' might be in the profile or fetch elsewhere. Defaulting to 'Member' if not found.
                     setRole(profile.role || 'Member');
                 }
             }
@@ -81,29 +87,33 @@ export default function ProfilePage() {
         }
     };
 
-    const handlePasswordChange = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setMessage(null);
-
-        if (newPassword !== confirmPassword) {
-            setMessage({ type: 'error', text: 'New passwords do not match' });
-            return;
-        }
-
+    const executePasswordChange = async () => {
         setIsLoading(true);
-
+        setMessage(null);
         try {
             const { error } = await supabase.auth.updateUser({ password: newPassword });
             if (error) throw error;
             setMessage({ type: 'success', text: 'Password changed successfully' });
             setNewPassword('');
             setConfirmPassword('');
-            setSecurityView('menu'); // Go back to menu after success
+            setSecurityView('menu');
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message });
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handlePasswordChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) {
+            setMessage({ type: 'error', text: 'New passwords do not match' });
+            return;
+        }
+
+        // Trigger reauthentication before saving
+        setReauthType('password');
+        setPendingAction(() => executePasswordChange);
     };
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,6 +142,57 @@ export default function ProfilePage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const executeEmailChange = async () => {
+        setIsLoading(true);
+        setMessage(null);
+        try {
+            const { error } = await supabase.auth.updateUser({ email });
+            if (error) throw error;
+            setMessage({ type: 'success', text: 'Verification email sent to new address' });
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleEmailChange = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (email === user?.email || !email) return;
+
+        // Direct call without reauth modal (Supabase handles verify link)
+        await executeEmailChange();
+        setIsEditingEmail(false);
+    };
+
+    const executeDeleteAccount = async () => {
+        setIsLoading(true);
+        try {
+            // First delete profile data
+            const { error: profileError } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', user.id);
+
+            if (profileError) throw profileError;
+
+            // Then sign out (account deletion in auth is harder via client SDK, Usually needs admin API or a trigger)
+            // For now, we delete profile and kick them out. 
+            // Better: Use a Supabase Edge Function to delete the auth user.
+            await supabase.auth.signOut();
+            router.push('/');
+        } catch (error: any) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteClick = () => {
+        setReauthType('phrase');
+        setPendingAction(() => executeDeleteAccount);
     };
 
     const handleSignOut = async () => {
@@ -187,8 +248,8 @@ export default function ProfilePage() {
                     <button
                         onClick={() => setActiveTab('profile')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'profile'
-                                ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         <User className="w-5 h-5" />
@@ -198,8 +259,8 @@ export default function ProfilePage() {
                     <button
                         onClick={() => { setActiveTab('security'); setSecurityView('menu'); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'security'
-                                ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         <Shield className="w-5 h-5" />
@@ -209,8 +270,8 @@ export default function ProfilePage() {
                     <button
                         onClick={() => setActiveTab('appearance')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'appearance'
-                                ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         <Palette className="w-5 h-5" />
@@ -221,8 +282,8 @@ export default function ProfilePage() {
                     <button
                         onClick={() => setActiveTab('notifications')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'notifications'
-                                ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         <Bell className="w-5 h-5" />
@@ -256,8 +317,8 @@ export default function ProfilePage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -20 }}
                                     className={`mb-8 p-4 rounded-xl border flex items-center gap-3 text-sm ${message.type === 'success'
-                                            ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                            : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                                        : 'bg-red-500/10 border-red-500/20 text-red-400'
                                         }`}>
                                     {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                                     {message.text}
@@ -315,7 +376,7 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
 
-                                <form onSubmit={handleProfileUpdate} className="space-y-8">
+                                <form className="space-y-8">
                                     <div className="space-y-3">
                                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Display Name</label>
                                         <div className="relative">
@@ -328,7 +389,6 @@ export default function ProfilePage() {
                                                 placeholder="Your display name"
                                             />
                                         </div>
-                                        <p className="text-xs text-slate-600">This is how you'll appear in chats and spaces.</p>
                                     </div>
 
                                     <div className="space-y-3">
@@ -344,28 +404,105 @@ export default function ProfilePage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3 opacity-60 pointer-events-none">
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email (Read-only)</label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                                            <input
-                                                type="text"
-                                                value={user.email || ''}
-                                                readOnly
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-slate-400"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4">
+                                    <div className="pt-4 pb-8 border-b border-white/5">
                                         <button
-                                            type="submit"
+                                            type="button"
+                                            onClick={handleProfileUpdate}
                                             disabled={isLoading}
                                             className="px-8 py-3 bg-white text-black font-semibold text-sm rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-white/5"
                                         >
-                                            {isLoading ? 'Saving...' : 'Save Changes'}
+                                            {isLoading ? 'Saving...' : 'Update General Info'}
                                             {!isLoading && <Save className="w-4 h-4" />}
                                         </button>
+                                    </div>
+
+                                    <div className="space-y-6 pt-4">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Mail className="w-5 h-5 text-violet-400" />
+                                            Email Address
+                                        </h3>
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Login Email</label>
+
+                                            {isEditingEmail ? (
+                                                <div className="animate-fade-in space-y-3">
+                                                    <div className="relative">
+                                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                                        <input
+                                                            type="email"
+                                                            value={email}
+                                                            onChange={(e) => setEmail(e.target.value)}
+                                                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-violet-500/50 transition-colors"
+                                                            placeholder="Enter new email address"
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleEmailChange}
+                                                            disabled={isLoading || !email || email === user?.email}
+                                                            className="px-4 py-2 bg-violet-600 text-white font-medium text-xs rounded-lg hover:bg-violet-500 transition-colors disabled:opacity-50"
+                                                        >
+                                                            Send Verification Link
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setIsEditingEmail(false);
+                                                                setEmail(user?.email || '');
+                                                            }}
+                                                            className="px-4 py-2 bg-white/5 text-slate-400 font-medium text-xs rounded-lg hover:bg-white/10 transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 italic">
+                                                        We'll send a confirmation link to <strong>{email}</strong>.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative flex-1 opacity-60">
+                                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                                        <input
+                                                            type="text"
+                                                            value={user?.email || ''}
+                                                            readOnly
+                                                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-slate-400 pointer-events-none"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsEditingEmail(true)}
+                                                        className="px-4 py-3.5 bg-white/5 text-white font-medium text-sm rounded-xl hover:bg-white/10 border border-white/10 transition-colors whitespace-nowrap"
+                                                    >
+                                                        Edit Email
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Danger Zone */}
+                                    <div className="pt-12 mt-12 border-t border-red-500/10">
+                                        <h3 className="text-lg font-bold text-red-500 mb-4 flex items-center gap-2">
+                                            <AlertCircle className="w-5 h-5 text-red-500" />
+                                            Danger Zone
+                                        </h3>
+                                        <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-white font-semibold mb-1">Delete Account</h4>
+                                                <p className="text-slate-500 text-xs">This action is permanent and cannot be undone.</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handleDeleteClick}
+                                                className="px-6 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 font-medium text-xs rounded-lg hover:bg-red-500/20 transition-colors"
+                                            >
+                                                Delete Account
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -536,6 +673,33 @@ export default function ProfilePage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            {/* Reauthentication Modal */}
+            <ReauthModal
+                isOpen={!!reauthType}
+                onClose={() => {
+                    setReauthType(null);
+                    setPendingAction(null);
+                }}
+                onVerified={() => {
+                    if (pendingAction) {
+                        pendingAction();
+                    }
+                }}
+                mode={reauthType === 'phrase' ? 'phrase' : reauthType === 'otp' ? 'otp' : 'password'}
+                emailForOtp={user?.email}
+                confirmationPhrase={`I confirm to delete my ${username || 'account'} from Chill Space`}
+                title={
+                    reauthType === 'phrase' ? "Confirm Account Deletion" :
+                        reauthType === 'otp' ? "Verify Deletion" :
+                            "Verify Identity"
+                }
+                description={
+                    reauthType === 'phrase' ? "This will permanently delete your account. This action cannot be undone." :
+                        reauthType === 'otp' ? "We will send a one-time code to your email. Enter it below to permanently delete your account." :
+                            "Please enter your password to confirm this sensitive action."
+                }
+                actionLabel={reauthType === 'phrase' || reauthType === 'otp' ? "Delete Forever" : "Confirm"}
+            />
         </main>
     );
 }

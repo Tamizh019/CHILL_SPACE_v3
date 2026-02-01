@@ -10,12 +10,32 @@ export async function GET(request: Request) {
 
     if (code) {
         const supabase = await createClient()
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error) {
-            const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+        const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (!error && session) {
+            // Check if user has a username / is onboarded
+            const { data: profile } = await supabase
+                .from('users')
+                .select('username')
+                .eq('id', session.user.id)
+                .single()
+
+            const forwardedHost = request.headers.get('x-forwarded-host')
             const isLocalEnv = process.env.NODE_ENV === 'development'
+
+            // If no profile or no username, redirect to onboarding
+            if (!profile || !profile.username) {
+                if (isLocalEnv) {
+                    return NextResponse.redirect(`${origin}/onboarding`)
+                } else if (forwardedHost) {
+                    return NextResponse.redirect(`https://${forwardedHost}/onboarding`)
+                } else {
+                    return NextResponse.redirect(`${origin}/onboarding`)
+                }
+            }
+
+            // Normal redirection
             if (isLocalEnv) {
-                // we can skip forwarding host check in local development
                 return NextResponse.redirect(`${origin}${next}`)
             } else if (forwardedHost) {
                 return NextResponse.redirect(`https://${forwardedHost}${next}`)
