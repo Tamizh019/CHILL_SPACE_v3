@@ -45,6 +45,55 @@ export function useChat() {
     // State for Reply
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
+    // State for Unread Counts
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+    const [unreadDmCounts, setUnreadDmCounts] = useState<Record<string, number>>({});
+
+    // Helper to mark channel as read
+    const markChannelAsRead = useCallback(async (channelId: string) => {
+        if (!currentUser) return;
+
+        // Optimistic update
+        setUnreadCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[channelId];
+            return newCounts;
+        });
+
+        const { error } = await supabase
+            .from('channel_read_status')
+            .upsert({
+                user_id: currentUser.id,
+                channel_id: channelId,
+                last_read_at: new Date().toISOString()
+            } as any);
+
+        if (error) console.error('Error marking channel as read:', error);
+    }, [currentUser, supabase]);
+
+
+    // Helper to mark DM as read
+    const markDmAsRead = useCallback(async (partnerId: string) => {
+        if (!currentUser) return;
+
+        // Optimistic update
+        setUnreadDmCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[partnerId];
+            return newCounts;
+        });
+
+        const { error } = await supabase
+            .from('dm_read_status')
+            .upsert({
+                user_id: currentUser.id,
+                partner_id: partnerId,
+                last_read_at: new Date().toISOString()
+            } as any);
+
+        if (error) console.error('Error marking DM as read:', error);
+    }, [currentUser, supabase]);
+
     // State for Pinned Messages
     const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
 
@@ -62,6 +111,58 @@ export function useChat() {
 
 
     // 3. Fetch Messages for Current Channel
+    // Also fetch global unread counts on mount
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const fetchUnread = async () => {
+            try {
+                const { data, error } = await supabase.rpc('get_unread_counts', { p_user_id: currentUser.id });
+                if (error) {
+                    console.error('Error fetching unread counts:', error.message, error.details, error);
+                } else if (data) {
+                    if ((data as any).channels) setUnreadCounts((data as any).channels);
+                    if ((data as any).dms) setUnreadDmCounts((data as any).dms);
+                }
+            } catch (e) {
+                console.error('Exception in fetchUnread:', e);
+            }
+        };
+
+        fetchUnread();
+
+        // Global listener for new messages to update counts
+        const globalSub = supabase
+            .channel('global_messages_counts')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages'
+            }, (payload) => {
+                const newMsg = payload.new as Message;
+
+                // 1. Channel message
+                if (newMsg.channel_id && newMsg.channel_id !== currentChannel?.id) {
+                    setUnreadCounts(prev => ({
+                        ...prev,
+                        [newMsg.channel_id!]: (prev[newMsg.channel_id!] || 0) + 1
+                    }));
+                }
+                // 2. DM message (recipient is me)
+                else if (newMsg.recipient_id === currentUser.id && newMsg.user_id !== recipient?.id) {
+                    setUnreadDmCounts(prev => ({
+                        ...prev,
+                        [newMsg.user_id!]: (prev[newMsg.user_id!] || 0) + 1
+                    }));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(globalSub);
+        };
+    }, [currentUser, currentChannel?.id]);
+
     useEffect(() => {
         if (!currentChannel) return;
         if (recipient) return; // Don't fetch channel messages if viewing a DM
@@ -163,6 +264,9 @@ export function useChat() {
         };
 
         fetchMessages();
+
+        // Mark as read immediately when entering channel
+        markChannelAsRead(currentChannel.id);
 
         // 4. Real-time Message Subscription
         if (recipient) return; // Don't subscribe to channel updates if viewing a DM
@@ -334,6 +438,10 @@ export function useChat() {
 
         const fetchPrivateMessages = async () => {
             setIsLoading(true);
+
+            // Mark as read immediately when opening DM
+            markDmAsRead(recipient.id);
+
             const { data, error } = await supabase
                 .from('messages')
                 .select(`*, users:user_id ( avatar_url, role )`)
@@ -774,6 +882,10 @@ export function useChat() {
     };
 
     return {
+        unreadCounts,
+        unreadDmCounts,
+        markChannelAsRead,
+        markDmAsRead,
         messages,
         channels,
         users,

@@ -30,7 +30,9 @@ function ChatPageContent() {
         removeReaction,
         pinMessage,
         unpinMessage,
-        editMessage
+        editMessage,
+        unreadCounts,
+        unreadDmCounts
     } = useChat();
 
     // State for URL synchronization
@@ -148,6 +150,8 @@ function ChatPageContent() {
                 selectedFileChannelId={selectedFileChannelId}
                 onSelectFileChannel={handleSelectFileChannel}
                 currentUser={currentUser}
+                unreadCounts={unreadCounts}
+                unreadDmCounts={unreadDmCounts}
             />
 
             {activeTab === 'spaces' ? (

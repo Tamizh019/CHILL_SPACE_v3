@@ -8,6 +8,7 @@ interface SpacesListProps {
     channels: Channel[];
     selectedId: string | null;
     onSelect: (id: string) => void;
+    unreadCounts?: Record<string, number>;
 }
 
 // Helper to generate consistent UI props for channels based on their ID/Name
@@ -25,7 +26,7 @@ const getChannelStyles = (name: string) => {
     return styles[index];
 };
 
-export function SpacesList({ channels, selectedId, onSelect }: SpacesListProps) {
+export function SpacesList({ channels, selectedId, onSelect, unreadCounts }: SpacesListProps) {
     // Group by category (currently all 'General' or defaults)
     const category = 'All Spaces';
 
@@ -52,11 +53,18 @@ export function SpacesList({ channels, selectedId, onSelect }: SpacesListProps) 
                         <div className={`w-8 h-8 rounded-lg ${style.bg} ${style.color} flex items-center justify-center`}>
                             <span className="material-icons-round text-lg">{channelIcon}</span>
                         </div>
-                        <div className="flex-1">
-                            <div className={`font-heading font-semibold text-sm ${isActive ? 'text-white' : 'text-slate-300'}`}>
-                                {channel.name}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                                <div className={`font-heading font-semibold text-sm truncate ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                                    {channel.name}
+                                </div>
+                                {unreadCounts && unreadCounts[channel.id] > 0 && (
+                                    <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-violet-500 text-[10px] font-bold text-white px-1">
+                                        {unreadCounts[channel.id] > 99 ? '99+' : unreadCounts[channel.id]}
+                                    </span>
+                                )}
                             </div>
-                            <div className="text-[10px] text-slate-500 truncate max-w-[150px]">
+                            <div className="text-[10px] text-slate-500 truncate">
                                 {channel.description || 'No description'}
                             </div>
                         </div>

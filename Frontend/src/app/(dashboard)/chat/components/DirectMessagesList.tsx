@@ -7,9 +7,10 @@ interface DirectMessagesListProps {
     users: User[];
     selectedId: string | null;
     onSelect: (id: string) => void;
+    unreadDmCounts?: Record<string, number>;
 }
 
-export function DirectMessagesList({ users, selectedId, onSelect }: DirectMessagesListProps) {
+export function DirectMessagesList({ users, selectedId, onSelect, unreadDmCounts }: DirectMessagesListProps) {
     // For now, simple list. In future, sort by last message time or online status.
 
     return (
@@ -51,6 +52,11 @@ export function DirectMessagesList({ users, selectedId, onSelect }: DirectMessag
                                 <span className={`font-heading font-semibold ${isActive ? 'text-white' : 'text-slate-200 group-hover:text-white'} transition-colors`}>
                                     {user.username || user.email?.split('@')[0]}
                                 </span>
+                                {unreadDmCounts && unreadDmCounts[user.id] > 0 && (
+                                    <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white px-1">
+                                        {unreadDmCounts[user.id] > 99 ? '99+' : unreadDmCounts[user.id]}
+                                    </span>
+                                )}
                             </div>
                             <p className={`text-xs truncate ${isActive ? 'text-slate-300' : 'text-slate-500 group-hover:text-slate-400'} transition-colors`}>
                                 {user.role || 'User'}

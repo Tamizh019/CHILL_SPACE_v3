@@ -22,6 +22,8 @@ interface ChatSidebarProps {
     selectedFileChannelId?: string | null;
     onSelectFileChannel?: (channelId: string | null) => void;
     currentUser?: User | null;
+    unreadCounts?: Record<string, number>;
+    unreadDmCounts?: Record<string, number>;
 }
 
 const COMMUNITY_RULES = [
@@ -41,12 +43,20 @@ export function ChatSidebar({
     users,
     selectedFileChannelId,
     onSelectFileChannel,
-    currentUser
+    currentUser,
+    unreadCounts,
+    unreadDmCounts
 }: ChatSidebarProps) {
     const [rulesExpanded, setRulesExpanded] = useState(false);
     const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+
+    // Calculate total DM unread count for sidebar badge
+    const totalDmUnread = unreadDmCounts ? Object.values(unreadDmCounts).reduce((a, b) => a + b, 0) : 0;
+    // Calculate total Channel unread count for sidebar badge (optional, if spaces tab needs it)
+    const totalChannelUnread = unreadCounts ? Object.values(unreadCounts).reduce((a, b) => a + b, 0) : 0;
+
 
     // Memoize supabase client to prevent recreation on every render
     const supabase = useMemo(() => createClient(), []);
@@ -111,6 +121,9 @@ export function ChatSidebar({
                             title="Direct Messages"
                         >
                             <span className="material-icons-round text-xl">forum</span>
+                            {totalDmUnread > 0 && (
+                                <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1a1a1a]"></span>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -161,6 +174,11 @@ export function ChatSidebar({
                             >
                                 <span className="material-icons-round text-xs">forum</span>
                                 DMs
+                                {totalDmUnread > 0 && (
+                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-[9px] text-white font-bold">
+                                        {totalDmUnread > 99 ? '99+' : totalDmUnread}
+                                    </span>
+                                )}
                             </button>
                         </div>
 
@@ -192,7 +210,7 @@ export function ChatSidebar({
                                         Create Channel
                                     </button>
                                 )}
-                                <SpacesList selectedId={selectedChat} onSelect={onSelectChat} channels={channels} />
+                                <SpacesList selectedId={selectedChat} onSelect={onSelectChat} channels={channels} unreadCounts={unreadCounts} />
                             </>
                         )}
 
@@ -206,7 +224,7 @@ export function ChatSidebar({
                         )}
 
                         {activeTab === 'dms' && (
-                            <DirectMessagesList selectedId={selectedChat} onSelect={onSelectChat} users={users} />
+                            <DirectMessagesList selectedId={selectedChat} onSelect={onSelectChat} users={users} unreadDmCounts={unreadDmCounts} />
                         )}
                     </div>
 
