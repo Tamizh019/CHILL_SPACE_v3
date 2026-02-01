@@ -1,86 +1,63 @@
-
 # 🌌 Chill Space v3
 
-> **Your all-in-one collaboration hub.**  
-> *Connect your crew. Collaborate on projects. Play games. Chill together.*
+> **The ultimate collaboration hub for builders, gamers, and friends.**
+> *Connect. Code. Vibe.*
 
-> 🔴 **Live Demo**: [Check out the progress](https://tamizh-loginpage.netlify.app/) *(Backend Integration Coming Soon)*
-
----
-
-> [!IMPORTANT]
-> **CURRENTLY UNDER ACTIVE DEVELOPMENT**
->
-> I am currently working Core UI/UX and polishing is ongoing. Auth + real-time chat are completed. Next milestone is integrating core Rust backend services for performance and advanced features.
+🔴 **[Live Demo](https://tamizh-loginpage.netlify.app/)** *(Backend Integration In Progress)*
 
 ---
 
-## 🚀 Overview
-
-**Chill Space v3** is the next evolution of digital hangouts. It's not just a chat app; it's a dedicated platform for student groups, friends, and project teams to collaborate, code, and relax. 
-
-We are building a premium, high-aesthetic environment where productivity meets vibes.
+## 🎯 The Vision
+We're not just building a chat app. We're building a **high-performance digital workspace** that feels like a premium desktop experience. No lag, no clutter—just pure productivity and vibes.
 
 ---
 
-## ✨ Features (Current & In-Development)
+## ✅ What We Built (So Far)
 
-### 🎨 Aesthetics & UI
-> *Modern, dark-themed UI with premium glassmorphism.*
-- **Deep Dark Theme**: Immersive `#0a0a0a` background with vibrant violet/purple accents (`#8b5cf6`).
-- **Glassmorphism**: Premium frosted glass effects on cards, modals, and overlays.
-- **Fluid Animations**: Powered by Framer Motion for smooth transitions, hover effects, and micro-interactions.
-- **Micro-Interactions**: Hover states, clicking animations, and dynamic tooltips make the app feel alive.
+### 🎨 **Ultra-Premium UI**
+- **Glassmorphism everywhere:** Frosted glass cards, modals, and sidebars.
+- **Deep Dark Mode:** `#0a0a0a` background with `#8b5cf6` (Violet) accents.
+- **Fluid Animations:** Powered by **Framer Motion** for a native feel.
 
-### 🔐 Enhanced Security & Profile
-> *Robust protection for user data and identity.*
-- **Reauthentication Guard Rails**: Sensitive actions (Password Change, Account Deletion) require verification.
-- **Secure Email Updates**: Read-only defaults with a verification loop for email changes.
-- **Customizable Profiles**:
-  - Avatar Uploads to Supabase Storage.
-  - Role Badges (Admin, Moderator, Member).
-  - "Danger Zone" management.
+### ⚡ **Global Performance Store**
+- **Zero-Lag Navigation:** Switching between Chat, Home, and Profile is instant.
+- **Global Caching:** We built a custom `GlobalStoreContext` that intelligently caches user data, ensuring the app feels faster than light.
+- **Optimized Rendering:** No unnecessary re-renders or hydration errors.
 
-### 🧘 Focus & Productivity
-> *Stay in the zone with Gamified Focus.*
-- **Databased-Backed Streaks**: Focus streaks and "Time Focused" stats are now persisted in Supabase (moved away from localStorage).
-- **Daily Goals**: Track your daily focus targets.
-- **Focus Timer**: Dedicated distraction-free timer mode.
+### 💬 **Real-Time Communication**
+- **Live Chat:** Powered by **Supabase Realtime**.
+- **Rich Media:** Send PDFs, images, and text files with instant previews.
+- **Smart Mentions:** Tag users `@tamizh` or files `@[notes.pdf]` instantly.
 
-### 🛠 Collaboration & Social
-#### 📢 Real-time Chat (Live)
-- **Instant Messaging**: Public Spaces and Private DMs powered by Supabase Realtime.
-- **Rich Media**:
-  - **File Previews**: Native support for PDF and Text file previews directly in chat.
-  - **Mention System**: Tag files or users seamlessly.
-- **Enhanced Reactions**: Smart Emoji Picker with active state highlighting.
-- **Message Controls**: Edit/Delete history, Reply threads, and "Jump to Message".
+### 🧘 **Focus Mode**
+- **Gamified Productivity:** Earn XP for staying focused.
+- **Streak Tracking:** Data is persisted to the database, so your streaks are safe.
 
-#### 👥 Friends & Activity
-- **"The Buzz" Feed**: Real-time activity feed showing what friends are up to.
-- **Game Integration**: Scores from "Galaxy Match" and other games sync to your profile and feed.
-- **Online Presence**: Real-time status indicators.
+---
 
-### 🚀 Onboarding Flow
-- **Seamless Entry**: New users are guided through a personalized onboarding experience to set up their profile and preferences immediately after signup.
+## 🚧 Roadmap (The Fun Stuff)
+
+### 🦀 **Rust Backend Integration (Next Up!)**
+We are integrating a high-performance **Rust (Actix-Web)** backend to handle heavy lifting:
+- [ ] **Game Server:** Real-time multiplayer logic for arcade games.
+- [ ] **Code Runner:** Secure sandbox to execute Python/JS code directly in chat.
+- [ ] **CRDT Collaboration:** Google Docs-style live editing.
+
+### 🎮 **Mini-Games**
+- **Galaxy Match:** A competitive puzzle game to challenge friends.
+- **Typing Racer:** Test your coding speed against the crew.
 
 ---
 
 ## 🏗 Tech Stack
 
-**Frontend** (In Progress)
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
-- **UI Library**: [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Animations**: [Framer Motion](https://www.framer.com/motion/)
-
-**Backend & Infrastructure** (Implemented)
-- **Core Backend**: [Supabase](https://supabase.com/) (PostgreSQL, Auth, Realtime, Storage)
-- **Microservices**: [Rust](https://www.rust-lang.org/) (Planned)
-    - *Code Runner*: Secure sandbox for executing user code.
-    - *Game Server*: High-performance WebSocket server for real-time gaming.
-    - *Collab Engine*: CRDT-based operational transformation for shared editing.
+| Component | Tech |
+| :--- | :--- |
+| **Frontend** | Next.js 16 (App Router), React 19, Tailwind v4 |
+| **Animations** | Framer Motion |
+| **Database** | Supabase (Postgres, Auth, Realtime) |
+| **Microservices** | **Rust (Actix-Web)** *[In Development]* |
+| **State** | Custom Global Store (Context API) |
 
 ---
 
@@ -96,7 +73,16 @@ npx supabase login
 
 # Regenerate types from your database schema
 npx supabase gen types typescript --project-id cmriyjrqkvpdchvbpnne > src/types/supabase.ts
-```
 
 > [!TIP]
 > Run this command after any database schema changes to avoid TypeScript build errors.
+
+
+##  Getting Started
+
+1. **Frontend:** `npm run dev`
+2. **Backend:** `cd backend` -> `cargo run`
+
+---
+*Built with 💜 by Tamizh*
+
