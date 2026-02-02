@@ -1,3 +1,4 @@
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GlobalStoreProvider, useGlobalStore } from '@/context/GlobalStoreContext';
@@ -20,50 +21,50 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function AppContent() {
   const { user, isLoading } = useGlobalStore();
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-slate-950 items-center justify-center">
-        <ActivityIndicator size="large" color="#10b981" />
-      </View>
-    )
-  }
-
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{
-        headerStyle: { backgroundColor: '#0f172a' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
-      }}>
-        {!user ? (
-          <Stack.Screen
-            name="Auth"
-            component={AuthScreen}
-            options={{ headerShown: false }}
-          />
-        ) : (
-          <>
+    <>
+      {isLoading ? (
+        <View className="flex-1 bg-slate-950 items-center justify-center">
+          <ActivityIndicator size="large" color="#10b981" />
+        </View>
+      ) : (
+        <Stack.Navigator screenOptions={{
+          headerStyle: { backgroundColor: '#0f172a' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}>
+          {!user ? (
             <Stack.Screen
-              name="Home"
-              component={HomeScreen}
+              name="Auth"
+              component={AuthScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
-              name="Chat"
-              component={ChatScreen}
-              options={({ route }) => ({ title: route.params.name })}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          ) : (
+            <>
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="Chat"
+                component={ChatScreen}
+                options={({ route }) => ({ title: route.params.name })}
+              />
+            </>
+          )}
+        </Stack.Navigator>
+      )}
+    </>
   );
 }
 
 export default function App() {
   return (
     <GlobalStoreProvider>
-      <AppContent />
+      <NavigationContainer>
+        <AppContent />
+      </NavigationContainer>
     </GlobalStoreProvider>
   );
 }
