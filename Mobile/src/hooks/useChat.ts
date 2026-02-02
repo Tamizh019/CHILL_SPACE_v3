@@ -1,0 +1,830 @@
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Database } from '@/types/supabase';
+import { useGlobalStore } from '@/context/GlobalStoreContext';
+
+// Extended Message type to include joined user data from queries
+type Message = Database['public']['Tables']['messages']['Row'] & {
+    users: {
+        avatar_url: string | null;
+        role: string | null;
+    } | null;
+    reactions?: { emoji: string; count: number; userIds: string[]; usernames: string[] }[];
+    pinned_by?: string | null;
+    pinned_by_username?: string | null;
+    edited_at?: string | null;
+};
+type Channel = Database['public']['Tables']['channels']['Row'];
+type User = Database['public']['Tables']['users']['Row'];
+
+export function useChat() {
+    const { user: globalUser, channels: globalChannels, friends: globalFriends, isLoading: isGlobalLoading } = useGlobalStore();
+
+    // Local state for features specific to chat view
+    const [messages, setMessages] = useState<Message[]>([]);
+    // channels state is now derived from global store
+    const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    // const supabase = useMemo(() => createClient(), []); // using imported instance
+    const messagesEndRef = useRef<any>(null); // Changed to any for RN
+
+    // Derived State
+    const currentUser = globalUser;
+    const channels = globalChannels;
+    const users = globalFriends; // Friends list used for DMs
+    const [recipient, setRecipient] = useState<User | null>(null);
+
+    // State for Online Users (Presence)
+    const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
+
+    // State for Typing Indicators
+    const [typingUsers, setTypingUsers] = useState<string[]>([]);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // State for Reply
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+    // State for Unread Counts
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+    const [unreadDmCounts, setUnreadDmCounts] = useState<Record<string, number>>({});
+
+    // Helper to mark channel as read
+    const markChannelAsRead = useCallback(async (channelId: string) => {
+        if (!currentUser) return;
+
+        // Optimistic update
+        setUnreadCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[channelId];
+            return newCounts;
+        });
+
+        const { error } = await supabase
+            .from('channel_read_status')
+            .upsert({
+                user_id: currentUser.id,
+                channel_id: channelId,
+                last_read_at: new Date().toISOString()
+            } as any);
+
+        if (error) console.error('Error marking channel as read:', error);
+    }, [currentUser]);
+
+
+    // Helper to mark DM as read
+    const markDmAsRead = useCallback(async (partnerId: string) => {
+        if (!currentUser) return;
+
+        // Optimistic update
+        setUnreadDmCounts(prev => {
+            const newCounts = { ...prev };
+            delete newCounts[partnerId];
+            return newCounts;
+        });
+
+        const { error } = await supabase
+            .from('dm_read_status')
+            .upsert({
+                user_id: currentUser.id,
+                partner_id: partnerId,
+                last_read_at: new Date().toISOString()
+            } as any);
+
+        if (error) console.error('Error marking DM as read:', error);
+    }, [currentUser]);
+
+    // State for Pinned Messages
+    const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
+
+    // 1. Initialize Default Channel (Once Global Data is Ready)
+    useEffect(() => {
+        if (!currentChannel && channels.length > 0 && !isLoading) {
+            const general = channels.find(c => c.name === 'General');
+            setCurrentChannel(general || channels[0]);
+            setIsLoading(false);
+        }
+    }, [channels, currentChannel, isLoading]);
+
+    // 3. Fetch Messages for Current Channel
+    // Also fetch global unread counts on mount
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const fetchUnread = async () => {
+            try {
+                const { data, error } = await supabase.rpc('get_unread_counts', { p_user_id: currentUser.id });
+                if (error) {
+                    console.error('Error fetching unread counts:', error.message, error.details, error);
+                } else if (data) {
+                    if ((data as any).channels) setUnreadCounts((data as any).channels);
+                    if ((data as any).dms) setUnreadDmCounts((data as any).dms);
+                }
+            } catch (e) {
+                console.error('Exception in fetchUnread:', e);
+            }
+        };
+
+        fetchUnread();
+
+        // Global listener for new messages to update counts
+        const globalSub = supabase
+            .channel('global_messages_counts')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages'
+            }, (payload) => {
+                const newMsg = payload.new as Message;
+
+                // 1. Channel message
+                if (newMsg.channel_id && newMsg.channel_id !== currentChannel?.id) {
+                    setUnreadCounts(prev => ({
+                        ...prev,
+                        [newMsg.channel_id!]: (prev[newMsg.channel_id!] || 0) + 1
+                    }));
+                }
+                // 2. DM message (recipient is me)
+                else if (newMsg.recipient_id === currentUser.id && newMsg.user_id !== recipient?.id) {
+                    setUnreadDmCounts(prev => ({
+                        ...prev,
+                        [newMsg.user_id!]: (prev[newMsg.user_id!] || 0) + 1
+                    }));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(globalSub);
+        };
+    }, [currentUser, currentChannel?.id]);
+
+    useEffect(() => {
+        if (!currentChannel) return;
+        if (recipient) return; // Don't fetch channel messages if viewing a DM
+
+        const fetchMessages = async () => {
+            setIsLoading(true);
+
+            // SPECIAL HANDLING: Announcements Channel
+            if (currentChannel.id === 'announcements') {
+                const { data, error } = await supabase
+                    .from('global_alerts')
+                    .select('*')
+                    .eq('is_active', true) // Optional: only show active alerts
+                    .order('created_at', { ascending: true });
+
+                if (error) {
+                    console.error('Error fetching announcements:', error);
+                } else if (data) {
+                    const formattedMessages = data.map((alert: any) => ({
+                        id: alert.id,
+                        content: alert.message,
+                        sent_at: alert.created_at,
+                        user_id: 'system',
+                        username: 'Tamizharasan', // Hardcoded admin name as requested
+                        recipient_id: null,
+                        channel_id: 'announcements',
+                        users: {
+                            avatar_url: '/logo1.svg', // Use app logo as avatar (Note: might need to change for RN)
+                            role: 'owner'
+                        }
+                    }));
+                    setMessages(formattedMessages as any);
+                }
+                setIsLoading(false);
+                return;
+            }
+
+            let query = supabase
+                .from('messages')
+                .select(`
+                    *,
+                    users:user_id ( avatar_url, role )
+                `)
+                .order('sent_at', { ascending: true });
+
+            // Special handling for "General" channel to include legacy messages (null channel_id) AND ensure they are not DMs (null recipient_id)
+            if (currentChannel.name === 'General') {
+                query = query.or(`channel_id.eq.${currentChannel.id},and(channel_id.is.null,recipient_id.is.null)`);
+            } else {
+                query = query.eq('channel_id', currentChannel.id);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching messages:', error);
+                setIsLoading(false);
+                return;
+            }
+
+            // Fetch reactions for all messages
+            const messageIds = data.map((m: any) => m.id);
+            const { data: reactionsData } = await supabase
+                .from('message_reactions')
+                .select('*, users:user_id (username)')
+                .in('message_id', messageIds);
+
+            // Group reactions by message and emoji
+            const reactionsMap: { [key: string]: any[] } = {};
+            if (reactionsData) {
+                reactionsData.forEach((r: any) => {
+                    const key = r.message_id;
+                    if (!reactionsMap[key]) reactionsMap[key] = [];
+
+                    const existing = reactionsMap[key].find((x: any) => x.emoji === r.emoji);
+                    if (existing) {
+                        existing.count++;
+                        existing.userIds.push(r.user_id);
+                        existing.usernames.push(r.users?.username || 'Unknown');
+                    } else {
+                        reactionsMap[key].push({
+                            emoji: r.emoji,
+                            count: 1,
+                            userIds: [r.user_id],
+                            usernames: [r.users?.username || 'Unknown']
+                        });
+                    }
+                });
+            }
+
+            // Merge reactions into messages
+            const messagesWithReactions = data.map((m: any) => ({
+                ...m,
+                reactions: reactionsMap[m.id] || []
+            }));
+
+            setMessages(messagesWithReactions as any);
+            setIsLoading(false);
+        };
+
+        fetchMessages();
+
+        // Mark as read immediately when entering channel
+        markChannelAsRead(currentChannel.id);
+
+        // 4. Real-time Message Subscription
+        if (recipient) return; // Don't subscribe to channel updates if viewing a DM
+
+        const channelFilter = currentChannel.name === 'General'
+            ? `channel_id=eq.${currentChannel.id}`
+            : `channel_id=eq.${currentChannel.id}`;
+
+        const messageSubscription = supabase
+            .channel(`channel:${currentChannel.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: channelFilter
+            }, async (payload) => {
+                await handleNewMessage(payload.new as Message);
+            });
+
+        // Additional listener for legacy messages (General only)
+        if (currentChannel.name === 'General') {
+            messageSubscription.on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: 'channel_id=is.null'
+            }, async (payload) => {
+                const msg = payload.new as Message;
+                if (msg.recipient_id === null) {
+                    await handleNewMessage(msg);
+                }
+            });
+        }
+
+        const handleNewMessage = async (newMsg: Message) => {
+            if (currentChannel.name === 'General' && newMsg.recipient_id !== null) return;
+            if (recipient) return;
+
+            // Avoid duplicates
+            setMessages(prev => {
+                if (prev.find(m => m.id === newMsg.id)) return prev;
+
+                const existingOptimistic = prev.find(m =>
+                    m.id.startsWith('temp-') &&
+                    m.content === newMsg.content &&
+                    m.user_id === newMsg.user_id &&
+                    Math.abs(new Date(m.sent_at || 0).getTime() - new Date(newMsg.sent_at || 0).getTime()) < 10000
+                );
+
+                if (existingOptimistic) {
+                    return prev.map(m => m.id === existingOptimistic.id ? { ...newMsg } : m) as any;
+                }
+                return [...prev, newMsg as any];
+            });
+
+            if (newMsg.user_id) {
+                const { data: sender } = await supabase
+                    .from('users')
+                    .select('avatar_url, role')
+                    .eq('id', newMsg.user_id)
+                    .single();
+
+                setMessages(prev => prev.map(msg =>
+                    msg.id === newMsg.id ? { ...msg, users: sender } : msg
+                ) as any);
+            }
+        };
+
+        messageSubscription.subscribe();
+
+        return () => {
+            supabase.removeChannel(messageSubscription);
+        };
+    }, [currentChannel, recipient]);
+
+    // 5. Send Message Function (with reply support)
+    const sendMessage = async (content: string, replyToId?: string) => {
+        if (!currentChannel || !currentUser || !content.trim()) return;
+
+        // Handle Announcements
+        if (currentChannel.id === 'announcements') {
+            const { error } = await supabase
+                .from('global_alerts')
+                .insert({
+                    message: content,
+                    type: 'info',
+                    is_active: true
+                } as any);
+
+            if (error) {
+                console.error('Error sending announcement:', error);
+            } else {
+                const optimisticMsg: any = {
+                    id: Date.now().toString(),
+                    content: content,
+                    sent_at: new Date().toISOString(),
+                    user_id: 'system',
+                    username: 'Tamizharasan',
+                    recipient_id: null,
+                    channel_id: 'announcements',
+                    users: { avatar_url: '/logo1.svg', role: 'owner' }
+                };
+                setMessages(prev => [...prev, optimisticMsg]);
+            }
+            return;
+        }
+
+        const { error } = await supabase
+            .from('messages')
+            .insert({
+                content,
+                channel_id: currentChannel.id,
+                user_id: currentUser.id,
+                username: currentUser.username,
+                sent_at: new Date().toISOString(),
+                reply_to_id: replyToId || null
+            } as any);
+
+        if (error) {
+            console.error('Error sending message:', error);
+        } else {
+            const optimisticMsg: any = {
+                id: `temp-${Date.now()}`,
+                content,
+                channel_id: currentChannel.id,
+                user_id: currentUser.id,
+                username: currentUser.username,
+                sent_at: new Date().toISOString(),
+                reply_to_id: replyToId || null,
+                users: {
+                    avatar_url: currentUser.avatar_url,
+                    role: currentUser.role
+                }
+            };
+            setMessages(prev => {
+                if (prev.find(m => m.content === content && m.user_id === currentUser.id &&
+                    Math.abs(new Date(m.sent_at || 0).getTime() - Date.now()) < 3000)) {
+                    return prev;
+                }
+                return [...prev, optimisticMsg];
+            });
+        }
+    };
+
+    // 7. Fetch Private Messages
+    useEffect(() => {
+        if (!recipient || !currentUser) return;
+
+        const fetchPrivateMessages = async () => {
+            setIsLoading(true);
+
+            // Mark as read immediately when opening DM
+            markDmAsRead(recipient.id);
+
+            const { data, error } = await supabase
+                .from('messages')
+                .select(`*, users:user_id ( avatar_url, role )`)
+                .or(`and(user_id.eq.${currentUser.id},recipient_id.eq.${recipient.id}),and(user_id.eq.${recipient.id},recipient_id.eq.${currentUser.id})`)
+                .order('sent_at', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching DMs:', error);
+            } else {
+                setMessages(data as any);
+            }
+            setIsLoading(false);
+        };
+
+        fetchPrivateMessages();
+
+        // Subscribe to DMs
+        const dmSubscription = supabase
+            .channel(`dm:${currentUser.id}-${recipient.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `recipient_id=in.(${currentUser.id},${recipient.id})`
+            }, async (payload) => {
+                const newMsg = payload.new as Message;
+                // Only add if it belongs to this conversation
+                if (
+                    (newMsg.user_id === currentUser.id && newMsg.recipient_id === recipient.id) ||
+                    (newMsg.user_id === recipient.id && newMsg.recipient_id === currentUser.id)
+                ) {
+                    const { data: sender } = await supabase
+                        .from('users')
+                        .select('avatar_url, role')
+                        .eq('id', newMsg.user_id)
+                        .single();
+
+                    setMessages(prev => [...prev, { ...newMsg, users: sender } as any]);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(dmSubscription);
+        };
+    }, [recipient, currentUser]);
+
+    // Send DM
+    const sendDirectMessage = async (content: string) => {
+        if (!recipient || !currentUser || !content.trim()) return;
+
+        const { error } = await supabase
+            .from('messages')
+            .insert({
+                content,
+                user_id: currentUser.id,
+                recipient_id: recipient.id,
+                username: currentUser.username,
+                sent_at: new Date().toISOString()
+            } as any);
+
+        if (error) console.error('Error sending DM:', error);
+    };
+
+    // 8. Presence Tracking (Online Users)
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const presenceChannel = supabase.channel('online-users', {
+            config: {
+                presence: {
+                    key: currentUser.id,
+                },
+            },
+        });
+
+        // Track presence state and sync to onlineUsers
+        presenceChannel
+            .on('presence', { event: 'sync' }, () => {
+                const state = presenceChannel.presenceState();
+                const onlineUserIds = Object.keys(state);
+
+                // Fetch user details for all online users
+                if (onlineUserIds.length > 0) {
+                    supabase
+                        .from('users')
+                        .select('*')
+                        .in('id', onlineUserIds)
+                        .then(({ data }) => {
+                            if (data) setOnlineUsers(data);
+                        });
+                } else {
+                    setOnlineUsers([]);
+                }
+            })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    // Track this user as online
+                    await presenceChannel.track({
+                        user_id: currentUser.id,
+                        username: currentUser.username,
+                        online_at: new Date().toISOString(),
+                    });
+
+                    // Update online_members table
+                    await supabase.from('online_members').upsert({
+                        user_id: currentUser.id,
+                        username: currentUser.username,
+                        is_online: true,
+                        last_seen: new Date().toISOString(),
+                    } as any);
+                }
+            });
+
+        // Cleanup: Mark user as offline when leaving
+        return () => {
+            (supabase.from('online_members') as any).update({
+                is_online: false,
+                last_seen: new Date().toISOString(),
+            }).eq('user_id', currentUser.id).then(() => {
+                supabase.removeChannel(presenceChannel);
+            });
+        };
+    }, [currentUser]);
+
+    // 9. Typing Indicator Functions
+    const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+    // Subscribe to typing events
+    useEffect(() => {
+        if (!currentChannel || recipient) return;
+
+        const channelName = `typing:${currentChannel.id}`;
+        const typingChannel = supabase.channel(channelName)
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+                if (payload.userId !== currentUser?.id) {
+                    setTypingUsers(prev => {
+                        if (!prev.includes(payload.username)) {
+                            return [...prev, payload.username];
+                        }
+                        return prev;
+                    });
+
+                    setTimeout(() => {
+                        setTypingUsers(prev => prev.filter(u => u !== payload.username));
+                    }, 3000);
+                }
+            })
+            .on('broadcast', { event: 'stop_typing' }, ({ payload }) => {
+                setTypingUsers(prev => prev.filter(u => u !== payload.username));
+            })
+            .subscribe();
+
+        typingChannelRef.current = typingChannel;
+
+        return () => {
+            supabase.removeChannel(typingChannel);
+            typingChannelRef.current = null;
+            setTypingUsers([]);
+        };
+    }, [currentChannel, recipient, currentUser?.id]);
+
+    const broadcastTyping = useCallback(() => {
+        if (!typingChannelRef.current || !currentUser) return;
+
+        typingChannelRef.current.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: { username: currentUser.username, userId: currentUser.id }
+        });
+
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            if (typingChannelRef.current) {
+                typingChannelRef.current.send({
+                    type: 'broadcast',
+                    event: 'stop_typing',
+                    payload: { userId: currentUser.id, username: currentUser.username }
+                });
+            }
+        }, 2000);
+    }, [currentUser]);
+
+    // 10. Role-Based Message Deletion
+    const canDeleteMessage = useCallback((messageUserId: string, messageAuthorRole: string | null) => {
+        if (!currentUser) return false;
+
+        const roleHierarchy: { [key: string]: number } = { admin: 3, moderator: 2, user: 1 };
+        const currentRole = roleHierarchy[currentUser.role || 'user'] || 1;
+        const authorRole = roleHierarchy[messageAuthorRole || 'user'] || 1;
+
+        if (currentUser.role === 'admin') return true;
+        if (currentUser.role === 'moderator' && authorRole < 2) return true;
+        return messageUserId === currentUser.id;
+    }, [currentUser]);
+
+    const deleteMessage = async (messageId: string) => {
+        const { error } = await supabase
+            .from('messages')
+            .delete()
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('Error deleting message:', error);
+            return false;
+        }
+
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        return true;
+    };
+
+    // 11. Message Reactions - Toggle behavior
+    const toggleReaction = async (messageId: string, emoji: string) => {
+        if (!currentUser) return;
+
+        const message = messages.find(m => m.id === messageId);
+        const reactions = (message as any)?.reactions || [];
+        const existingReaction = reactions.find((r: any) => r.emoji === emoji);
+        const hasReacted = existingReaction?.userIds?.includes(currentUser.id);
+
+        if (hasReacted) {
+            // Remove reaction
+            setMessages(prev => prev.map(m => {
+                if (m.id === messageId) {
+                    const currentReactions = (m as any).reactions || [];
+                    return {
+                        ...m,
+                        reactions: currentReactions
+                            .map((r: any) =>
+                                r.emoji === emoji
+                                    ? {
+                                        ...r,
+                                        count: r.count - 1,
+                                        userIds: r.userIds.filter((id: string) => id !== currentUser.id),
+                                        usernames: r.usernames?.filter((_: string, i: number) => r.userIds[i] !== currentUser.id) || []
+                                    }
+                                    : r
+                            )
+                            .filter((r: any) => r.count > 0)
+                    };
+                }
+                return m;
+            }));
+
+            await supabase
+                .from('message_reactions')
+                .delete()
+                .eq('message_id', messageId)
+                .eq('user_id', currentUser.id)
+                .eq('emoji', emoji);
+        } else {
+            // Add reaction
+            setMessages(prev => prev.map(m => {
+                if (m.id === messageId) {
+                    const currentReactions = (m as any).reactions || [];
+                    const existing = currentReactions.find((r: any) => r.emoji === emoji);
+
+                    if (existing) {
+                        return {
+                            ...m,
+                            reactions: currentReactions.map((r: any) =>
+                                r.emoji === emoji
+                                    ? {
+                                        ...r,
+                                        count: r.count + 1,
+                                        userIds: [...r.userIds, currentUser.id],
+                                        usernames: [...(r.usernames || []), currentUser.username]
+                                    }
+                                    : r
+                            )
+                        };
+                    } else {
+                        return {
+                            ...m,
+                            reactions: [...currentReactions, {
+                                emoji,
+                                count: 1,
+                                userIds: [currentUser.id],
+                                usernames: [currentUser.username]
+                            }]
+                        };
+                    }
+                }
+                return m;
+            }));
+
+            const { error } = await supabase
+                .from('message_reactions')
+                .insert({
+                    message_id: messageId,
+                    user_id: currentUser.id,
+                    emoji
+                } as any);
+
+            if (error && error.code !== '23505') {
+                console.error('Error adding reaction:', error);
+            }
+        }
+    };
+
+    const addReaction = async (messageId: string, emoji: string) => toggleReaction(messageId, emoji);
+    const removeReaction = async (messageId: string, emoji: string) => toggleReaction(messageId, emoji);
+
+    // 12. Pin/Unpin Messages
+    const pinMessage = async (messageId: string) => {
+        if (!currentUser) return false;
+
+        const { error } = await (supabase
+            .from('messages') as any)
+            .update({
+                pinned: true,
+                pinned_at: new Date().toISOString(),
+                pinned_by: currentUser.id,
+                pinned_by_username: currentUser.username
+            })
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('[PIN] Error pinning message:', error);
+            return false;
+        }
+
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, pinned: true, pinned_at: new Date().toISOString(), pinned_by: currentUser.id, pinned_by_username: currentUser.username }
+                : m
+        ));
+        return true;
+    };
+
+    const unpinMessage = async (messageId: string) => {
+        if (!currentUser) return false;
+
+        const { error } = await (supabase
+            .from('messages') as any)
+            .update({
+                pinned: false,
+                pinned_at: null,
+                pinned_by: null,
+                pinned_by_username: null
+            })
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('[UNPIN] Error unpinning message:', error);
+            return false;
+        }
+
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, pinned: false, pinned_at: null, pinned_by: null, pinned_by_username: null }
+                : m
+        ));
+        return true;
+    };
+
+    const editMessage = async (messageId: string, newContent: string) => {
+        const { error } = await supabase
+            .from('messages')
+            .update({
+                content: newContent,
+                edited_at: new Date().toISOString()
+            } as any)
+            .eq('id', messageId);
+
+        if (error) {
+            console.error('Error editing message:', error);
+            return false;
+        }
+
+        setMessages(prev => prev.map(m =>
+            m.id === messageId
+                ? { ...m, content: newContent, edited_at: new Date().toISOString() }
+                : m
+        ));
+        return true;
+    };
+
+    // Return everything
+    return {
+        messages,
+        currentChannel,
+        setCurrentChannel,
+        isLoading,
+        sendMessage,
+        messagesEndRef,
+        currentUser,
+        channels,
+        users, // friends for DM
+        recipient, // current DM partner
+        setRecipient,
+        sendDirectMessage,
+        onlineUsers,
+        typingUsers,
+        broadcastTyping,
+        replyingTo,
+        setReplyingTo,
+        unreadCounts,
+        unreadDmCounts,
+        pinnedMessages,
+        canDeleteMessage,
+        deleteMessage,
+        addReaction,
+        removeReaction,
+        pinMessage,
+        unpinMessage,
+        editMessage
+    };
+}
