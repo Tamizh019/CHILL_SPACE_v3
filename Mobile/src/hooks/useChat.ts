@@ -51,6 +51,7 @@ export function useChat() {
     // Helper to mark channel as read
     const markChannelAsRead = useCallback(async (channelId: string) => {
         if (!currentUser) return;
+        if (channelId === 'announcements') return; // Skip for virtual channel
 
         // Optimistic update
         setUnreadCounts(prev => {
