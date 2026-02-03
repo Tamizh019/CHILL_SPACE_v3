@@ -11,3 +11,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 env_logger = "0.11"
 log = "0.4"
+time = "=0.3.36"  # Pinned - newer versions require Rust 1.88+
