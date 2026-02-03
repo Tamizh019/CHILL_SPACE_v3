@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 const statuses = [
     { id: 'focusing', label: 'Focusing', color: 'bg-green-500', borderColor: 'border-green-500/30' },
@@ -16,6 +16,7 @@ export function Header() {
     // Added 'id' to userInfo type
     const [userInfo, setUserInfo] = useState<{ id: string; username: string | null; avatar_url: string | null } | null>(null);
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -44,63 +45,72 @@ export function Header() {
 
     const activeStatus = statuses.find((s) => s.id === currentStatus)!;
 
+    // Determine which pages should show search/status
+    const showSearchAndStatus = pathname === '/home' || pathname === '/chat';
+
     return (
         <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-white/5 dark:bg-black/20 z-20 relative">
-            {/* Search Bar */}
-            <div className="flex items-center flex-1 max-w-xl">
-                <div className="relative w-full group">
-                    <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-focus-within:text-violet-400 transition-colors">
-                        search
-                    </span>
-                    <input
-                        className="w-full bg-white/5 border-none focus:ring-1 focus:ring-violet-500/50 rounded-lg pl-10 pr-12 py-2 text-sm text-slate-300 placeholder:text-slate-600 transition-all"
-                        placeholder="Search conversations, projects..."
-                        type="text"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-slate-500 font-mono bg-white/5">
-                        ⌘K
+            {/* Left Side - Conditional Content */}
+            <div className="flex items-center flex-1">
+                {showSearchAndStatus && (
+                    <div className="relative w-full max-w-xl group">
+                        <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-focus-within:text-violet-400 transition-colors">
+                            search
+                        </span>
+                        <input
+                            className="w-full bg-white/5 border-none focus:ring-1 focus:ring-violet-500/50 rounded-lg pl-10 pr-12 py-2 text-sm text-slate-300 placeholder:text-slate-600 transition-all"
+                            placeholder="Search conversations, projects..."
+                            type="text"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-slate-500 font-mono bg-white/5">
+                            ⌘K
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Right Side */}
             <div className="flex items-center gap-4">
-                {/* Status Dropdown */}
-                <div className="relative">
-                    <button
-                        onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-                    >
-                        <span className={`w-2 h-2 rounded-full ${activeStatus.color}`} />
-                        <span className="text-sm text-slate-200">{activeStatus.label}</span>
-                        <span className="material-icons-round text-slate-500 text-sm">expand_more</span>
-                    </button>
+                {/* Status Dropdown - Only on Home/Chat */}
+                {showSearchAndStatus && (
+                    <>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                            >
+                                <span className={`w-2 h-2 rounded-full ${activeStatus.color}`} />
+                                <span className="text-sm text-slate-200">{activeStatus.label}</span>
+                                <span className="material-icons-round text-slate-500 text-sm">expand_more</span>
+                            </button>
 
-                    {showStatusDropdown && (
-                        <div className="absolute top-full right-0 mt-2 w-48 bg-[#0a0a0a] backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
-                            {statuses.map((status) => (
-                                <button
-                                    key={status.id}
-                                    onClick={() => {
-                                        setCurrentStatus(status.id);
-                                        setShowStatusDropdown(false);
-                                    }}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors ${currentStatus === status.id ? 'text-white bg-white/[0.03]' : 'text-slate-400'
-                                        }`}
-                                >
-                                    <span className={`w-2 h-2 rounded-full ${status.color}`} />
-                                    {status.label}
-                                    {currentStatus === status.id && (
-                                        <span className="material-icons-round text-violet-400 text-sm ml-auto">check</span>
-                                    )}
-                                </button>
-                            ))}
+                            {showStatusDropdown && (
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-[#0a0a0a] backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                                    {statuses.map((status) => (
+                                        <button
+                                            key={status.id}
+                                            onClick={() => {
+                                                setCurrentStatus(status.id);
+                                                setShowStatusDropdown(false);
+                                            }}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors ${currentStatus === status.id ? 'text-white bg-white/[0.03]' : 'text-slate-400'
+                                                }`}
+                                        >
+                                            <span className={`w-2 h-2 rounded-full ${status.color}`} />
+                                            {status.label}
+                                            {currentStatus === status.id && (
+                                                <span className="material-icons-round text-violet-400 text-sm ml-auto">check</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
 
-                {/* Separator */}
-                <div className="h-6 w-px bg-white/10" />
+                        {/* Separator */}
+                        <div className="h-6 w-px bg-white/10" />
+                    </>
+                )}
 
                 {/* Notifications */}
                 <button className="p-2 text-slate-400 hover:text-white transition-colors relative">

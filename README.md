@@ -12,40 +12,43 @@ We're not just building a chat app. We're building a **high-performance digital 
 
 ---
 
-## ✅ What We Built (So Far)
+## ✅ Features
 
 ### 🎨 **Ultra-Premium UI**
-- **Glassmorphism everywhere:** Frosted glass cards, modals, and sidebars.
-- **Deep Dark Mode:** `#0a0a0a` background with `#8b5cf6` (Violet) accents.
-- **Fluid Animations:** Powered by **Framer Motion** for a native feel.
+- **Glassmorphism everywhere:** Frosted glass cards, modals, and sidebars
+- **Deep Dark Mode:** `#0a0a0a` background with `#8b5cf6` (Violet) accents
+- **Fluid Animations:** Powered by **Framer Motion** for a native feel
+- **Consistent Theming:** Arcade, Code, Chat, and Focus pages all share the same aesthetic
 
 ### ⚡ **Global Performance Store**
-- **Zero-Lag Navigation:** Switching between Chat, Home, and Profile is instant.
-- **Global Caching:** We built a custom `GlobalStoreContext` that intelligently caches user data, ensuring the app feels faster than light.
-- **Optimized Rendering:** No unnecessary re-renders or hydration errors.
+- **Zero-Lag Navigation:** Instant switching between sections
+- **Global Caching:** Custom `GlobalStoreContext` for intelligent data caching
+- **Optimized Rendering:** No unnecessary re-renders or hydration errors
 
 ### 💬 **Real-Time Communication**
-- **Live Chat:** Powered by **Supabase Realtime**.
-- **Rich Media:** Send PDFs, images, and text files with instant previews.
-- **Smart Mentions:** Tag users `@tamizh` or files `@[notes.pdf]` instantly.
+- **Live Chat:** Powered by **Supabase Realtime**
+- **Rich Media:** Send PDFs, images, and text files with instant previews
+- **Smart Mentions:** Tag users `@tamizh` or files `@[notes.pdf]` instantly
+- **Direct Messages:** Private 1-on-1 conversations with unread indicators
+
+### 💻 **Code Playground** *(NEW!)*
+- **Multi-Language Support:** Python, Java, JavaScript (TypeScript, Rust, Go, C++ coming soon)
+- **Monaco Editor:** VS Code-quality editing experience
+- **Rust Backend:** High-performance code execution via Actix-Web
+- **Modern UI:** Compact language switcher with real SVG logos
+- **Error Parsing:** Beautiful, readable error displays
+
+### 🎮 **Arcade Center**
+- **Galaxy Match:** Memory puzzle game with cosmic theme
+- **More Coming:** Word Chain, Code Trivia, Typing Race
 
 ### 🧘 **Focus Mode**
-- **Gamified Productivity:** Earn XP for staying focused.
-- **Streak Tracking:** Data is persisted to the database, so your streaks are safe.
+- **Gamified Productivity:** Earn XP for staying focused
+- **Streak Tracking:** Persistent data storage
 
----
-
-## 🚧 Roadmap (The Fun Stuff)
-
-### 🦀 **Rust Backend Integration (Next Up!)**
-We are integrating a high-performance **Rust (Actix-Web)** backend to handle heavy lifting:
-- [ ] **Game Server:** Real-time multiplayer logic for arcade games.
-- [ ] **Code Runner:** Secure sandbox to execute Python/JS code directly in chat.
-- [ ] **CRDT Collaboration:** Google Docs-style live editing.
-
-### 🎮 **Mini-Games**
-- **Galaxy Match:** A competitive puzzle game to challenge friends.
-- **Typing Racer:** Test your coding speed against the crew.
+### 🔒 **Security**
+- **Protected Routes:** All dashboard pages (`/home`, `/chat`, `/code`, `/games`, `/focus`, `/profile`) require authentication
+- **Middleware Security:** Next.js middleware redirects unauthenticated users to login
 
 ---
 
@@ -55,56 +58,79 @@ We are integrating a high-performance **Rust (Actix-Web)** backend to handle hea
 | :--- | :--- |
 | **Frontend** | Next.js 16 (App Router), React 19, Tailwind v4 |
 | **Animations** | Framer Motion |
+| **Editor** | Monaco Editor |
 | **Database** | Supabase (Postgres, Auth, Realtime) |
-| **Microservices** | **Rust (Actix-Web)** *[In Development]* |
+| **Backend** | **Rust (Actix-Web)** - Code execution service |
 | **State** | Custom Global Store (Context API) |
+
+---
+
+## � Project Structure
+
+```
+CHILL-SPACE v3/
+├── Frontend/          # Next.js application
+│   ├── src/app/       # App Router pages
+│   │   ├── (auth)/    # Login, Signup
+│   │   └── (dashboard)/ # Protected routes
+│   │       ├── home/
+│   │       ├── chat/
+│   │       ├── code/    # Code Playground
+│   │       ├── games/   # Arcade Center
+│   │       ├── focus/
+│   │       └── profile/
+│   └── src/utils/     # Utilities & middleware
+├── backend/           # Rust Actix-Web API
+│   └── src/           # Code runner service
+├── Docs/              # Technical documentation
+└── Mobile/            # React Native app
+```
 
 ---
 
 ## 🔧 Developer Notes
 
-### Supabase Type Generation
-
-When you add/change tables or columns in Supabase, regenerate TypeScript types to keep the codebase type-safe:
+### Getting Started
 
 ```bash
-# Login to Supabase CLI (one-time setup)
-npx supabase login
+# Frontend
+cd Frontend
+npm install
+npm run dev
 
-# Regenerate types from your database schema
-npx supabase gen types typescript --project-id cmriyjrqkvpdchvbpnne > src/types/supabase.ts
-
+# Backend (requires Rust)
+cd backend
+cargo run
 ```
 
-> [!TIP]
-> Run this command after any database schema changes to avoid TypeScript build errors.
+### Environment Variables
 
+Copy `frontend.env.example` to `.env.local` in the Frontend folder and fill in your Supabase credentials.
 
-### 🚀 Hugging Face Deployment (Backend)
-
-Deploy the Rust backend to Hugging Face Spaces using `git subtree`:
+### Supabase Type Generation
 
 ```bash
-# 1. Commit changes to main repo
+npx supabase login
+npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/types/supabase.ts
+```
+
+### Hugging Face Deployment (Backend)
+
+```bash
 git add .
 git commit -m "feat: backend updates"
-
-# 2. Pull remote changes first (if any)
 git subtree pull --prefix backend hf main --squash
-
-# 3. Push backend folder to Hugging Face
 git subtree push --prefix backend hf main
 ```
 
-> [!TIP]
-> Always run `git subtree pull` before `push` to avoid conflicts.
+---
+
+## 📚 Documentation
+
+See the `Docs/` folder for detailed technical documentation:
+- [Code Editor Architecture](./Docs/CODE_EDITOR.md) - How the Code Playground works
+- [Rust Backend Integration](./Docs/RUST_BACKEND.md) - Frontend-Backend communication
 
 ---
-##  Getting Started
 
-1. **Frontend:** `npm run dev`
-2. **Backend:** `cd backend` -> `cargo run`
-
----
 *Built with 💜 by Tamizh*
-
