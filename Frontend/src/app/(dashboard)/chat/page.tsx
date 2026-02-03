@@ -139,7 +139,7 @@ function ChatPageContent() {
     };
 
     return (
-        <div className="flex-1 flex h-full overflow-hidden">
+        <div className="flex-1 flex h-full overflow-hidden relative">
             <ChatSidebar
                 activeTab={activeTab}
                 onTabChange={handleTabChange}

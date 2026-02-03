@@ -473,7 +473,7 @@ const DashboardView = ({ users }: { users: any[] }) => (
                                     item.color === 'purple' ? 'bg-purple-500/10 text-purple-300/60' :
                                         'bg-orange-500/10 text-orange-300/60'
                                     }`}>
-                                    {Math.floor(Math.random() * 50)}m ago
+                                    {[12, 28, 5][i]}m ago
                                 </span>
                             </div>
                             <div>
@@ -508,7 +508,7 @@ const DashboardView = ({ users }: { users: any[] }) => (
                         <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-center mb-0.5">
                                 <p className="text-white text-xs font-medium truncate group-hover:text-violet-400 transition-colors">{user.name}</p>
-                                <span className="text-[10px] text-[#444]">{Math.floor(Math.random() * 60)}m</span>
+                                <span className="text-[10px] text-[#444]">{[3, 15, 42, 8][i]}m</span>
                             </div>
                             <p className="text-[#555] text-[10px] truncate">{user.lastMsg}</p>
                         </div>
