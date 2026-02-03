@@ -113,9 +113,11 @@ async fn main() -> std::io::Result<()> {
     
     HttpServer::new(|| {
         // CORS configuration for frontend
+        let frontend_url = std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        
         let cors = Cors::default()
-            .allowed_origin("https://tamizh-loginpage.netlify.app")
-            .allowed_origin("http://localhost:3000") // Local development
+            .allowed_origin(&frontend_url)
+            .allowed_origin("http://localhost:3000") // Always allow local development
             .allowed_origin("http://127.0.0.1:3000")
             .allowed_methods(vec!["GET", "POST", "OPTIONS"])
             .allowed_headers(vec![
