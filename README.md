@@ -74,10 +74,31 @@ npx supabase login
 # Regenerate types from your database schema
 npx supabase gen types typescript --project-id cmriyjrqkvpdchvbpnne > src/types/supabase.ts
 
+```
+
 > [!TIP]
 > Run this command after any database schema changes to avoid TypeScript build errors.
 
+
+### 🚀 Hugging Face Deployment (Backend)
+
+Deploy the Rust backend to Hugging Face Spaces using `git subtree`:
+
+```bash
+# 1. Commit changes to main repo
+git add .
+git commit -m "feat: backend updates"
+
+# 2. Pull remote changes first (if any)
+git subtree pull --prefix backend hf main --squash
+
+# 3. Push backend folder to Hugging Face
+git subtree push --prefix backend hf main
 ```
+
+> [!TIP]
+> Always run `git subtree pull` before `push` to avoid conflicts.
+
 ---
 ##  Getting Started
 
