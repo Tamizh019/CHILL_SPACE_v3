@@ -7,16 +7,19 @@ import { RightSidebar } from './components/RightSidebar';
 
 export default function HomePage() {
     return (
-        <main className="flex-1 flex overflow-hidden p-8 gap-8">
-            {/* Center Content - No Scrollbar, Fit to Screen */}
-            <section className="flex-1 flex flex-col gap-8 overflow-hidden max-w-7xl mx-auto w-full">
+        <main className="flex-1 flex overflow-hidden p-4 md:p-8 gap-4 md:gap-8">
+            {/* Center Content - Scrollable on mobile */}
+            <section className="flex-1 flex flex-col gap-4 md:gap-8 overflow-y-auto max-w-7xl mx-auto w-full">
                 <GreetingSection />
                 <StatsCards />
                 <JumpBackIn />
             </section>
 
-            {/* Right Sidebar */}
-            <RightSidebar />
+            {/* Right Sidebar - Hidden on mobile */}
+            <div className="hidden lg:block">
+                <RightSidebar />
+            </div>
         </main>
     );
 }
+

@@ -49,11 +49,19 @@ export function Header() {
     const showSearchAndStatus = pathname === '/home' || pathname === '/chat';
 
     return (
-        <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-white/5 dark:bg-black/20 z-20 relative">
-            {/* Left Side - Conditional Content */}
+        <header className="h-14 md:h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-white/5 dark:bg-black/20 z-20 relative">
+            {/* Left Side - App Title on mobile, Search on desktop */}
             <div className="flex items-center flex-1">
+                {/* Mobile: Show app title */}
+                <div className="md:hidden flex items-center gap-2">
+                    <span className="text-lg font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+                        Chill Space
+                    </span>
+                </div>
+
+                {/* Desktop: Show search */}
                 {showSearchAndStatus && (
-                    <div className="relative w-full max-w-xl group">
+                    <div className="hidden md:block relative w-full max-w-xl group">
                         <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-focus-within:text-violet-400 transition-colors">
                             search
                         </span>
@@ -70,10 +78,10 @@ export function Header() {
             </div>
 
             {/* Right Side */}
-            <div className="flex items-center gap-4">
-                {/* Status Dropdown - Only on Home/Chat */}
+            <div className="flex items-center gap-2 md:gap-4">
+                {/* Status Dropdown - Desktop Only */}
                 {showSearchAndStatus && (
-                    <>
+                    <div className="hidden md:flex items-center gap-4">
                         <div className="relative">
                             <button
                                 onClick={() => setShowStatusDropdown(!showStatusDropdown)}
@@ -109,18 +117,18 @@ export function Header() {
 
                         {/* Separator */}
                         <div className="h-6 w-px bg-white/10" />
-                    </>
+                    </div>
                 )}
 
                 {/* Notifications */}
                 <button className="p-2 text-slate-400 hover:text-white transition-colors relative">
-                    <span className="material-icons-round">notifications</span>
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-violet-500 rounded-full" />
+                    <span className="material-icons-round text-xl md:text-2xl">notifications</span>
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-violet-500 rounded-full" />
                 </button>
 
-                {/* User Profile */}
+                {/* User Profile - Hidden on mobile (accessible via bottom nav) */}
                 <div
-                    className="flex items-center gap-3 pl-2 cursor-pointer group"
+                    className="hidden md:flex items-center gap-3 pl-2 cursor-pointer group"
                     onClick={() => router.push('/profile')}
                 >
                     {userInfo?.avatar_url ? (

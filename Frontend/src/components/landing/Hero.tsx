@@ -57,7 +57,7 @@ export const Hero = () => {
                     className="relative z-10 text-center max-w-4xl mx-auto"
                 >
                     {/* Main Headline */}
-                    <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.1] mb-8">
+                    <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.1] mb-6 md:mb-8 px-2">
                         <span className="bg-gradient-to-b from-white via-white to-[#666] bg-clip-text text-transparent">
                             Chat with your people.
                         </span>
@@ -72,7 +72,7 @@ export const Hero = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2, duration: 0.8 }}
-                        className="text-base md:text-lg text-[#888] max-w-2xl mx-auto mb-12 leading-relaxed"
+                        className="text-sm sm:text-base md:text-lg text-[#888] max-w-2xl mx-auto mb-8 md:mb-12 leading-relaxed px-4"
                     >
                         Chill Space is the all-in-one <span className="text-white">collaboration platform</span> built for your crew.
                         Discuss projects, share code, chat privately, and play games together — anytime, anywhere.
@@ -220,12 +220,12 @@ const ProductPreview = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
-                className="text-center mb-12"
+                className="text-center mb-8 md:mb-12 px-4"
             >
-                <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white mb-3 md:mb-4">
                     See it in action
                 </h2>
-                <p className="text-[#888] text-lg max-w-xl mx-auto">
+                <p className="text-[#888] text-sm sm:text-base md:text-lg max-w-xl mx-auto">
                     Explore what makes Chill Space your team's favorite hangout
                 </p>
             </motion.div>
@@ -236,14 +236,14 @@ const ProductPreview = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.1 }}
-                className="flex justify-center mb-8"
+                className="flex justify-center mb-6 md:mb-8 px-4"
             >
-                <div className="inline-flex bg-[#1a1a1a] rounded-full p-1.5 border border-white/5">
+                <div className="inline-flex bg-[#1a1a1a] rounded-full p-1 sm:p-1.5 border border-white/5">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`relative px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${activeTab === tab.id
+                            className={`relative px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 flex items-center gap-1 sm:gap-2 ${activeTab === tab.id
                                 ? 'text-white'
                                 : 'text-[#666] hover:text-white'
                                 }`}
@@ -256,7 +256,7 @@ const ProductPreview = () => {
                                 />
                             )}
                             <span className="relative z-10">{tab.icon}</span>
-                            <span className="relative z-10">{tab.label}</span>
+                            <span className="relative z-10 hidden xs:inline">{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -268,26 +268,27 @@ const ProductPreview = () => {
                 whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="max-w-5xl mx-auto perspective-1000"
+                className="max-w-5xl mx-auto perspective-1000 px-2 sm:px-4"
             >
-                <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] overflow-hidden shadow-2xl shadow-violet-500/5">
+                <div className="relative rounded-xl sm:rounded-2xl border border-white/10 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] overflow-hidden shadow-2xl shadow-violet-500/5">
                     {/* Browser Chrome */}
-                    <div className="h-12 border-b border-white/5 flex items-center px-4 gap-2 bg-[#0c0c0c]">
-                        <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-                            <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
-                            <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+                    <div className="h-8 sm:h-12 border-b border-white/5 flex items-center px-2 sm:px-4 gap-2 bg-[#0c0c0c]">
+                        <div className="flex gap-1 sm:gap-1.5">
+                            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-[#ff5f57]" />
+                            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-[#febc2e]" />
+                            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-[#28c840]" />
                         </div>
                         <div className="flex-1 flex justify-center">
-                            <div className="px-4 py-1.5 rounded-lg bg-white/5 text-xs text-[#666] flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full bg-green-500/50" />
-                                app.chillspace.io
+                            <div className="px-2 sm:px-4 py-1 sm:py-1.5 rounded-lg bg-white/5 text-[10px] sm:text-xs text-[#666] flex items-center gap-1 sm:gap-2">
+                                <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500/50" />
+                                <span className="hidden xs:inline">app.chillspace.io</span>
+                                <span className="xs:hidden">chillspace.io</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Content Area with AnimatePresence */}
-                    <div className="min-h-[400px] relative overflow-hidden">
+                    <div className="min-h-[280px] sm:min-h-[350px] md:min-h-[400px] relative overflow-hidden">
                         <motion.div
                             key={activeTab}
                             initial={{ opacity: 0, x: 20 }}
@@ -309,7 +310,7 @@ const ProductPreview = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex flex-wrap justify-center gap-4 mt-10"
+                className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4 mt-8 md:mt-10 px-4"
             >
                 {[
                     { icon: '⚡', label: 'Real-time Sync', desc: 'Messages appear instantly', color: 'violet' },
@@ -327,18 +328,18 @@ const ProductPreview = () => {
                             }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
-                            className="flex items-center gap-3 px-5 py-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-violet-500/30 hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group"
+                            className="flex items-center gap-3 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-violet-500/30 hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group"
                         >
                             <motion.span
-                                className="text-lg"
+                                className="text-base sm:text-lg"
                                 whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
                                 transition={{ duration: 0.3 }}
                             >
                                 {feature.icon}
                             </motion.span>
                             <div>
-                                <p className="text-white text-sm font-medium group-hover:text-violet-300 transition-colors">{feature.label}</p>
-                                <p className="text-[#555] text-xs group-hover:text-[#777] transition-colors">{feature.desc}</p>
+                                <p className="text-white text-xs sm:text-sm font-medium group-hover:text-violet-300 transition-colors">{feature.label}</p>
+                                <p className="text-[#555] text-[10px] sm:text-xs group-hover:text-[#777] transition-colors">{feature.desc}</p>
                             </div>
                         </motion.div>
                     </MagneticButton>
@@ -761,11 +762,11 @@ const FeaturesSection = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.8 }}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start mt-32 mb-16"
+                className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-start mt-16 md:mt-32 mb-8 md:mb-16"
             >
                 {/* Left - Headline */}
                 <div>
-                    <h3 className="text-3xl lg:text-4xl font-semibold text-white mb-4">
+                    <h3 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-4">
                         Chat, files, and code.<br />
                         That's it.
                     </h3>
@@ -773,7 +774,7 @@ const FeaturesSection = () => {
 
                 {/* Right - Description */}
                 <div>
-                    <p className="text-[#888] text-lg leading-relaxed">
+                    <p className="text-[#888] text-base sm:text-lg leading-relaxed">
                         Send messages, share files, and paste code snippets in one place —
                         perfect for <span className="text-white">projects, quick doubts,</span> <span className="text-white">and everyday conversations.</span>
                     </p>
@@ -786,34 +787,34 @@ const FeaturesSection = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.8 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"
             >
                 {[
                     {
-                        icon: <Zap className="w-5 h-5" />,
+                        icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
                         title: "Super Fast",
                         description: "Messages show up instantly — even on slow college networks.",
                     },
                     {
-                        icon: <Shield className="w-5 h-5" />,
+                        icon: <Shield className="w-4 h-4 sm:w-5 sm:h-5" />,
                         title: "Private Chats",
                         description: "Your messages stay inside your group. No one else can see them.",
                     },
                     {
-                        icon: <Users className="w-5 h-5" />,
+                        icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />,
                         title: "Your Space",
                         description: "Create a group space for your friends, classmates, or project team.",
                     },
                 ].map((feature, i) => (
                     <div
                         key={i}
-                        className="group p-6 rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors"
+                        className="group p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors"
                     >
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white mb-4">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/5 flex items-center justify-center text-white mb-3 sm:mb-4">
                             {feature.icon}
                         </div>
-                        <h4 className="text-white font-medium mb-2">{feature.title}</h4>
-                        <p className="text-sm text-[#666]">{feature.description}</p>
+                        <h4 className="text-white font-medium mb-1 sm:mb-2 text-sm sm:text-base">{feature.title}</h4>
+                        <p className="text-xs sm:text-sm text-[#666]">{feature.description}</p>
                     </div>
                 ))}
             </motion.div>
@@ -824,28 +825,28 @@ const FeaturesSection = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.8 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-4 md:mt-6"
             >
-                <div className="group p-6 rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white mb-4">
-                        <Code className="w-5 h-5" />
+                <div className="group p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/5 flex items-center justify-center text-white mb-3 sm:mb-4">
+                        <Code className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <h4 className="text-white font-medium mb-2">Code Editor</h4>
-                    <p className="text-sm text-[#666]">Built-in real-time editor for collaborative coding and debugging sessions.</p>
+                    <h4 className="text-white font-medium mb-1 sm:mb-2 text-sm sm:text-base">Code Editor</h4>
+                    <p className="text-xs sm:text-sm text-[#666]">Built-in real-time editor for collaborative coding and debugging sessions.</p>
                 </div>
-                <div className="group p-6 rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white mb-4">
-                        <Zap className="w-5 h-5" />
+                <div className="group p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/5 flex items-center justify-center text-white mb-3 sm:mb-4">
+                        <Zap className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <h4 className="text-white font-medium mb-2">Interactive Games</h4>
-                    <p className="text-sm text-[#666]">Take a break with built-in mini-games designed for group interaction.</p>
+                    <h4 className="text-white font-medium mb-1 sm:mb-2 text-sm sm:text-base">Interactive Games</h4>
+                    <p className="text-xs sm:text-sm text-[#666]">Take a break with built-in mini-games designed for group interaction.</p>
                 </div>
-                <div className="group p-6 rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white mb-4">
-                        <FileText className="w-5 h-5" />
+                <div className="group p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-[#0c0c0c] border border-white/5 hover:border-white/10 transition-colors sm:col-span-2 md:col-span-1">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/5 flex items-center justify-center text-white mb-3 sm:mb-4">
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
-                    <h4 className="text-white font-medium mb-2">Project Spaces</h4>
-                    <p className="text-sm text-[#666]">Organized threads and file vaults for specific college projects and goals.</p>
+                    <h4 className="text-white font-medium mb-1 sm:mb-2 text-sm sm:text-base">Project Spaces</h4>
+                    <p className="text-xs sm:text-sm text-[#666]">Organized threads and file vaults for specific college projects and goals.</p>
                 </div>
             </motion.div>
         </section>
@@ -855,9 +856,9 @@ const FeaturesSection = () => {
 // --- CTA Section ---
 const CTASection = () => {
     return (
-        <section className="relative py-32 px-6 overflow-hidden">
+        <section className="relative py-16 sm:py-24 md:py-32 px-4 sm:px-6 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-t from-[#110d1c] via-[#100b1a]/70 to-transparent pointer-events-none" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-[#2e1065]/40 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[700px] h-[200px] sm:h-[350px] bg-[#2e1065]/40 rounded-full blur-[80px] sm:blur-[120px] pointer-events-none" />
 
             <motion.div
                 initial={{ opacity: 0, y: 50 }}
@@ -866,11 +867,11 @@ const CTASection = () => {
                 transition={{ duration: 0.8 }}
                 className="relative z-10 text-center max-w-3xl mx-auto"
             >
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-6 leading-tight">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-4 sm:mb-6 leading-tight">
                     Ready to start your<br />
                     Chill Space?
                 </h2>
-                <p className="text-[#888] text-lg mb-12">
+                <p className="text-[#888] text-sm sm:text-base md:text-lg mb-8 sm:mb-12 px-4">
                     Connect Your crew. Collaborate on projects. Play games. Chill together.
                 </p>
                 <Link href="/signup">
@@ -884,46 +885,53 @@ const CTASection = () => {
 // --- Footer (Clean & Simple) ---
 const Footer = () => {
     return (
-        <footer className="relative border-t border-white/5 py-10 px-6 bg-[#0a0a0a]">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[1px] bg-gradient-to-r from-transparent via-[#8b5cf6]/40 to-transparent" />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-8 bg-[#8b5cf6]/10 blur-xl" />
+        <footer className="relative border-t border-white/5 py-6 sm:py-10 px-4 sm:px-6 bg-[#0a0a0a]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] sm:w-[500px] h-[1px] bg-gradient-to-r from-transparent via-[#8b5cf6]/40 to-transparent" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[200px] sm:w-[300px] h-6 sm:h-8 bg-[#8b5cf6]/10 blur-xl" />
 
-            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-6 text-sm text-[#666]">
+            <div className="max-w-6xl mx-auto flex flex-col items-center gap-6 md:flex-row md:justify-between">
+                {/* Left Side - Copyright & Links */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 text-xs sm:text-sm text-[#666]">
                     <span>© 2026 Chill Space Inc.</span>
-                    <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                    <a href="#" className="hover:text-white transition-colors">Terms of Use</a>
+                    <div className="flex gap-4">
+                        <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                        <a href="#" className="hover:text-white transition-colors">Terms of Use</a>
+                    </div>
                 </div>
-                <div className="flex flex-col items-center md:items-end gap-4">
+
+                {/* Right Side - Report Bug & Social */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                     {/* Report Bug */}
-                    <a href="mailto:jefftamizh01@gmail.com" className="group flex items-center gap-2 text-sm text-[#666] hover:text-white transition-colors">
+                    <a href="mailto:jefftamizh01@gmail.com" className="group flex items-center gap-2 text-xs sm:text-sm text-[#666] hover:text-white transition-colors">
                         <span className="text-xs font-medium">Report Bug</span>
-                        <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-red-500/10 group-hover:text-red-400 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <div className="p-1 sm:p-1.5 rounded-full bg-white/5 group-hover:bg-red-500/10 group-hover:text-red-400 transition-colors">
+                            <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                         </div>
                     </a>
 
-                    {/* Check Code / Contact */}
+                    {/* Social Links */}
                     <div className="flex items-center gap-3">
                         <span className="text-[#666] text-xs font-medium">Connect</span>
                         {/* LinkedIn */}
-                        <a href="https://www.linkedin.com/in/tamizharasan-r-a6931828a/" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-white transition-colors">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <a href="https://www.linkedin.com/in/tamizharasan-r-a6931828a/" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-white transition-colors p-1">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                             </svg>
                         </a>
                         {/* GitHub */}
-                        <a href="https://github.com/Tamizh019" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-white transition-colors">
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <a href="https://github.com/Tamizh019" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-white transition-colors p-1">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
                             </svg>
                         </a>
                     </div>
                 </div>
             </div>
-            <div className="max-w-6xl mx-auto mt-8 text-xs text-[#555] leading-relaxed flex flex-col md:flex-row justify-between items-center gap-4">
+
+            {/* Bottom Text */}
+            <div className="max-w-6xl mx-auto mt-6 sm:mt-8 text-[10px] sm:text-xs text-[#555] leading-relaxed flex flex-col gap-3 sm:gap-4 md:flex-row md:justify-between md:items-center">
                 <p className="max-w-xl text-center md:text-left">
                     Chill Space is a real-time communication platform, not a telecommunications provider. Messaging services are provided through secure, encrypted channels.
                 </p>

@@ -85,7 +85,7 @@ export function ChatSidebar({
             initial={false}
             animate={{ width: isCollapsed ? 80 : 320 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="border-r border-white/5 bg-black/20 flex flex-col overflow-hidden"
+            className="hidden md:flex border-r border-white/5 bg-black/20 flex-col overflow-hidden"
         >
             {isCollapsed ? (
                 // Collapsed Dock View

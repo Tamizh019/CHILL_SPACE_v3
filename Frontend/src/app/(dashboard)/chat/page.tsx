@@ -7,6 +7,7 @@ import { ChatSidebar } from './components/ChatSidebar';
 import { SpacesChatArea } from './components/SpacesChatArea';
 import { DirectMessagesArea } from './components/DirectMessagesArea';
 import { FilesArea } from './components/FilesArea';
+import { MobileChannelPicker } from './components/MobileChannelPicker';
 
 function ChatPageContent() {
     const [activeTab, setActiveTab] = useState<'spaces' | 'files' | 'dms'>('spaces');
@@ -138,74 +139,126 @@ function ChatPageContent() {
         setSelectedFileChannelId(channelId);
     };
 
+    // Mobile channel picker state
+    const [showMobilePicker, setShowMobilePicker] = useState(false);
+
     return (
-        <div className="flex-1 flex h-full overflow-hidden relative">
-            <ChatSidebar
+        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+            {/* Mobile Header - Channel Picker Trigger */}
+            <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 bg-black/40 backdrop-blur-md">
+                <button
+                    onClick={() => setShowMobilePicker(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                >
+                    <span className="text-violet-400 text-lg">#</span>
+                    <span className="text-white font-medium text-sm truncate max-w-[150px]">
+                        {activeTab === 'spaces'
+                            ? currentChannel?.name || 'Select Channel'
+                            : activeTab === 'dms'
+                                ? recipient?.username || 'Select User'
+                                : 'Files'
+                        }
+                    </span>
+                    <span className="material-icons-round text-slate-400 text-base">expand_more</span>
+                </button>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{onlineUsers.length} online</span>
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex overflow-hidden">
+                <ChatSidebar
+                    activeTab={activeTab}
+                    onTabChange={handleTabChange}
+                    selectedChat={activeTab === 'spaces' ? currentChannel?.id || null : recipient?.id || null}
+                    onSelectChat={handleSelectChat}
+                    channels={channels}
+                    users={users}
+                    selectedFileChannelId={selectedFileChannelId}
+                    onSelectFileChannel={handleSelectFileChannel}
+                    currentUser={currentUser}
+                    unreadCounts={unreadCounts}
+                    unreadDmCounts={unreadDmCounts}
+                />
+
+                {activeTab === 'spaces' ? (
+                    <SpacesChatArea
+                        currentChannel={currentChannel}
+                        messages={messages}
+                        currentUser={currentUser}
+                        sendMessage={sendMessage}
+                        messagesEndRef={messagesEndRef}
+                        onlineUsers={onlineUsers}
+                        users={users}
+                        // New feature props
+                        typingUsers={typingUsers}
+                        broadcastTyping={broadcastTyping}
+                        replyingTo={replyingTo}
+                        setReplyingTo={setReplyingTo}
+                        pinnedMessages={pinnedMessages}
+                        canDeleteMessage={canDeleteMessage}
+                        deleteMessage={deleteMessage}
+                        addReaction={addReaction}
+                        removeReaction={removeReaction}
+                        pinMessage={pinMessage}
+                        unpinMessage={unpinMessage}
+                        editMessage={editMessage}
+                        onChannelDeleted={() => {
+                            // Switch to first available channel (General)
+                            const generalChannel = channels.find(c => c.name === 'General' || c.id !== currentChannel?.id);
+                            if (generalChannel) {
+                                setCurrentChannel(generalChannel);
+                            }
+                        }}
+                        onSwitchToFiles={() => {
+                            setActiveTab('files');
+                            // Set the file channel to current channel
+                            if (currentChannel) {
+                                setSelectedFileChannelId(currentChannel.id);
+                            }
+                        }}
+                    />
+                ) : activeTab === 'files' ? (
+                    <FilesArea
+                        selectedChannelId={selectedFileChannelId}
+                        channels={channels}
+                        currentUser={currentUser}
+                    />
+                ) : (
+                    <DirectMessagesArea
+                        recipient={recipient}
+                        messages={messages}
+                        currentUser={currentUser}
+                        sendMessage={sendDirectMessage}
+                        messagesEndRef={messagesEndRef}
+                    />
+                )}
+            </div>
+
+            {/* Mobile Channel Picker */}
+            <MobileChannelPicker
+                isOpen={showMobilePicker}
+                onClose={() => setShowMobilePicker(false)}
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
-                selectedChat={activeTab === 'spaces' ? currentChannel?.id || null : recipient?.id || null}
-                onSelectChat={handleSelectChat}
                 channels={channels}
                 users={users}
-                selectedFileChannelId={selectedFileChannelId}
-                onSelectFileChannel={handleSelectFileChannel}
-                currentUser={currentUser}
+                currentChannelId={currentChannel?.id || null}
+                currentDmUserId={recipient?.id || null}
+                onSelectChannel={(id) => {
+                    const channel = channels.find(c => c.id === id);
+                    if (channel) setCurrentChannel(channel);
+                    setActiveTab('spaces');
+                }}
+                onSelectDm={(id) => {
+                    const user = users.find(u => u.id === id);
+                    if (user) setRecipient(user);
+                    setActiveTab('dms');
+                }}
                 unreadCounts={unreadCounts}
                 unreadDmCounts={unreadDmCounts}
             />
-
-            {activeTab === 'spaces' ? (
-                <SpacesChatArea
-                    currentChannel={currentChannel}
-                    messages={messages}
-                    currentUser={currentUser}
-                    sendMessage={sendMessage}
-                    messagesEndRef={messagesEndRef}
-                    onlineUsers={onlineUsers}
-                    users={users}
-                    // New feature props
-                    typingUsers={typingUsers}
-                    broadcastTyping={broadcastTyping}
-                    replyingTo={replyingTo}
-                    setReplyingTo={setReplyingTo}
-                    pinnedMessages={pinnedMessages}
-                    canDeleteMessage={canDeleteMessage}
-                    deleteMessage={deleteMessage}
-                    addReaction={addReaction}
-                    removeReaction={removeReaction}
-                    pinMessage={pinMessage}
-                    unpinMessage={unpinMessage}
-                    editMessage={editMessage}
-                    onChannelDeleted={() => {
-                        // Switch to first available channel (General)
-                        const generalChannel = channels.find(c => c.name === 'General' || c.id !== currentChannel?.id);
-                        if (generalChannel) {
-                            setCurrentChannel(generalChannel);
-                        }
-                    }}
-                    onSwitchToFiles={() => {
-                        setActiveTab('files');
-                        // Set the file channel to current channel
-                        if (currentChannel) {
-                            setSelectedFileChannelId(currentChannel.id);
-                        }
-                    }}
-                />
-            ) : activeTab === 'files' ? (
-                <FilesArea
-                    selectedChannelId={selectedFileChannelId}
-                    channels={channels}
-                    currentUser={currentUser}
-                />
-            ) : (
-                <DirectMessagesArea
-                    recipient={recipient}
-                    messages={messages}
-                    currentUser={currentUser}
-                    sendMessage={sendDirectMessage}
-                    messagesEndRef={messagesEndRef}
-                />
-            )}
         </div>
     );
 }

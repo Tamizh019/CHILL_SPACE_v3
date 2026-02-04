@@ -494,7 +494,7 @@ export function SpacesChatArea({
                 <div
                     ref={messagesContainerRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-4 py-4 space-y-0.5"
+                    className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 space-y-0.5"
                 >
                     <div className="flex flex-col items-center justify-center text-center py-8 opacity-50">
                         <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
@@ -538,9 +538,9 @@ export function SpacesChatArea({
                                 <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${isGrouped ? 'mt-0.5' : 'mt-3'}`}>
                                     {/* Left side: Avatar for other users */}
                                     {!isCurrentUser && (
-                                        <div className="w-10 mr-3 flex-shrink-0">
+                                        <div className="w-7 sm:w-10 mr-2 sm:mr-3 flex-shrink-0">
                                             {!isGrouped && (
-                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold overflow-hidden">
                                                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : (msg.username?.[0]?.toUpperCase() || 'U')}
                                                 </div>
                                             )}
@@ -548,13 +548,13 @@ export function SpacesChatArea({
                                     )}
 
                                     {/* Message Bubble Container */}
-                                    <div className={`relative max-w-[70%] group/msg ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
+                                    <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] group/msg ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
                                         {/* Username & Time - Only for non-grouped */}
                                         {!isGrouped && (
-                                            <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                                                <span className="font-semibold text-sm text-white">{msg.username}</span>
+                                            <div className={`flex flex-wrap items-center gap-1 sm:gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                                                <span className="font-semibold text-xs sm:text-sm text-white">{msg.username}</span>
                                                 {messageRole && messageRole !== 'user' && (
-                                                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide
+                                                    <span className={`text-[8px] sm:text-[9px] px-1.5 sm:px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide
                                                         ${messageRole === 'admin'
                                                             ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300 shadow-sm shadow-amber-500/10'
                                                             : messageRole === 'moderator'
@@ -568,9 +568,9 @@ export function SpacesChatArea({
                                                         </span>
                                                     </span>
                                                 )}
-                                                <span className="text-[10px] text-slate-500">
+                                                <span className="text-[9px] sm:text-[10px] text-slate-500">
                                                     {formatTime(msg.sent_at)}
-                                                    {msg.edited_at && <span className="text-[9px] text-slate-600 ml-1">(edited)</span>}
+                                                    {msg.edited_at && <span className="text-[8px] sm:text-[9px] text-slate-600 ml-1">(edited)</span>}
                                                 </span>
                                                 {msg.pinned && <span className="material-icons-round text-yellow-500 text-xs">push_pin</span>}
                                             </div>
@@ -613,7 +613,7 @@ export function SpacesChatArea({
                                             {/* The Message */}
                                             <div
                                                 id={`msg-${msg.id}`}
-                                                className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed transition-colors duration-500 ${msg.content?.startsWith('[MD]\n') ? '' : 'whitespace-pre-wrap break-words'}
+                                                className={`px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed transition-colors duration-500 ${msg.content?.startsWith('[MD]\n') ? '' : 'whitespace-pre-wrap break-words'}
                                                 ${isCurrentUser
                                                         ? 'bg-violet-900/40 border border-violet-500/20 text-violet-50 rounded-br-md'
                                                         : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
@@ -763,7 +763,7 @@ export function SpacesChatArea({
 
                                         {/* Reactions Display */}
                                         {(msg as any).reactions && (msg as any).reactions.length > 0 && (
-                                            <div className={`flex items-center gap-1.5 mt-2 flex-wrap ${isCurrentUser ? 'justify-end' : ''}`}>
+                                            <div className={`flex items-center gap-1 sm:gap-1.5 mt-1.5 sm:mt-2 flex-wrap ${isCurrentUser ? 'justify-end' : ''}`}>
                                                 {(msg as any).reactions.map((reaction: { emoji: string; count: number; userIds: string[]; usernames?: string[] }) => {
                                                     const hasReacted = reaction.userIds.includes(currentUser?.id || '');
                                                     const tooltipText = reaction.usernames?.join(', ') || 'Loading...';
@@ -776,14 +776,14 @@ export function SpacesChatArea({
                                                                 usernames: reaction.usernames || []
                                                             })}
                                                             title={`${tooltipText} reacted with ${reaction.emoji}`}
-                                                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer
+                                                            className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs transition-all cursor-pointer
                                                                 ${hasReacted
                                                                     ? 'bg-violet-500/20 border border-violet-500/50 text-violet-300'
                                                                     : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
                                                                 }`}
                                                         >
-                                                            <span>{reaction.emoji}</span>
-                                                            <span className="font-medium">{reaction.count}</span>
+                                                            <span className="text-sm sm:text-base">{reaction.emoji}</span>
+                                                            <span className="font-medium text-[10px] sm:text-xs">{reaction.count}</span>
                                                         </button>
                                                     );
                                                 })}
@@ -793,9 +793,9 @@ export function SpacesChatArea({
 
                                     {/* Right side: Avatar for current user */}
                                     {isCurrentUser && (
-                                        <div className="w-10 ml-3 flex-shrink-0">
+                                        <div className="w-7 sm:w-10 ml-2 sm:ml-3 flex-shrink-0">
                                             {!isGrouped && (
-                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold overflow-hidden">
                                                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : 'Me'}
                                                 </div>
                                             )}
@@ -979,31 +979,128 @@ export function SpacesChatArea({
                                     </div>
                                 )}
                             </div>
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                onKeyDown={handleKeyDown}
-                                placeholder={isAnnouncement && !isAdmin ? "Only admin can message" : `Message #${currentChannel?.name || 'channel'}...`}
-                                disabled={isAnnouncement && !isAdmin}
-                                className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-slate-500"
-                            />
-                            <button className="text-slate-500 hover:text-white transition-colors" disabled={isAnnouncement && !isAdmin}>
-                                <span className="material-icons-round text-xl">mood</span>
-                            </button>
+                            <div className={`flex-1 relative bg-[#1e1e1e] border border-white/10 rounded-2xl flex items-center
+                                ${isAnnouncement && !isAdmin ? 'cursor-not-allowed opacity-50' : ''}`}
+                                onClick={() => isAnnouncement && !isAdmin && setShowRestrictedModal(true)}
+                            >
+                                {/* Mention Dropdown - Shows Members and Files */}
+                                {showMentionDropdown && hasMentionMatches && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-scale-in">
+                                        {/* Tabs */}
+                                        <div className="flex border-b border-white/5">
+                                            <button
+                                                onClick={() => setMentionTab('members')}
+                                                className={`flex-1 px-3 py-2 text-[10px] uppercase tracking-wider transition-colors
+                                                    ${mentionTab === 'members'
+                                                        ? 'text-violet-400 border-b-2 border-violet-500 bg-violet-500/10'
+                                                        : 'text-slate-500 hover:text-slate-300'}`}
+                                            >
+                                                <span className="flex items-center justify-center gap-1.5">
+                                                    <span className="material-icons-round text-xs">person</span>
+                                                    Members ({filteredMentionUsers.length})
+                                                </span>
+                                            </button>
+                                            <button
+                                                onClick={() => setMentionTab('files')}
+                                                className={`flex-1 px-3 py-2 text-[10px] uppercase tracking-wider transition-colors
+                                                    ${mentionTab === 'files'
+                                                        ? 'text-violet-400 border-b-2 border-violet-500 bg-violet-500/10'
+                                                        : 'text-slate-500 hover:text-slate-300'}`}
+                                            >
+                                                <span className="flex items-center justify-center gap-1.5">
+                                                    <span className="material-icons-round text-xs">attach_file</span>
+                                                    Files ({filteredMentionFiles.length})
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        {/* Members List */}
+                                        {mentionTab === 'members' && (
+                                            <div className="max-h-48 overflow-y-auto">
+                                                {filteredMentionUsers.length > 0 ? (
+                                                    filteredMentionUsers.map(user => (
+                                                        <button
+                                                            key={user.id}
+                                                            onClick={() => insertMention(user.username || '')}
+                                                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
+                                                        >
+                                                            {user.avatar_url ? (
+                                                                <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
+                                                                    {user.username?.[0]?.toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                            <span className="text-sm text-white">{user.username}</span>
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-3 py-3 text-center text-xs text-slate-500">
+                                                        No members found
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Files List */}
+                                        {mentionTab === 'files' && (
+                                            <div className="max-h-48 overflow-y-auto">
+                                                {filteredMentionFiles.length > 0 ? (
+                                                    filteredMentionFiles.map(file => {
+                                                        const typeInfo = getFileTypeInfo(file.file_type);
+                                                        return (
+                                                            <button
+                                                                key={file.id}
+                                                                onClick={() => insertFileMention(file)}
+                                                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
+                                                            >
+                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${typeInfo.color} bg-white/5`}>
+                                                                    <span className="material-icons-round text-sm">{typeInfo.icon}</span>
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm text-white truncate">{file.display_name || file.original_filename}</p>
+                                                                    <p className="text-[10px] text-slate-500 truncate">
+                                                                        {file.file_type.split('/')[1]?.toUpperCase()} • by {file.uploader?.username || 'Unknown'}
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="px-3 py-3 text-center text-xs text-slate-500">
+                                                        No files found in this channel
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder={isAnnouncement && !isAdmin ? "Only admin can message" : `Message #${currentChannel?.name || 'channel'}...`}
+                                    disabled={isAnnouncement && !isAdmin}
+                                    className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-slate-500 py-2.5 px-4"
+                                />
+                                <button className="text-slate-500 hover:text-white transition-colors px-3" disabled={isAnnouncement && !isAdmin}>
+                                    <span className="material-icons-round text-xl">mood</span>
+                                </button>
+                            </div>
 
                             {/* Send Button - Only visible when text exists */}
                             <button
                                 onClick={handleSend}
                                 disabled={!inputValue.trim() || (isAnnouncement && !isAdmin)}
-                                className={`p-2 rounded-xl transition-all duration-200
+                                className={`p-1.5 sm:p-2 rounded-xl transition-all duration-200
                                     ${inputValue.trim()
                                         ? 'bg-violet-600 text-white hover:bg-violet-500 scale-100 opacity-100'
                                         : 'bg-slate-700/50 text-slate-500 scale-95 opacity-50 cursor-not-allowed'
                                     }`}
                             >
-                                <span className="material-icons-round text-lg">send</span>
+                                <span className="material-icons-round text-lg sm:text-xl">send</span>
                             </button>
                         </div>
                         <div className="flex items-center justify-between mt-2 px-1">

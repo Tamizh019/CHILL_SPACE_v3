@@ -228,21 +228,52 @@ export default function ProfilePage() {
     };
 
     return (
-        <main className="flex-1 flex overflow-hidden p-8 gap-8 relative">
-            {/* Go Back Button */}
-            <div className="absolute top-8 left-8 z-10">
+        <main className="flex-1 flex overflow-hidden p-4 md:p-8 gap-4 md:gap-8 relative">
+            {/* Go Back Button - adjusted for mobile */}
+            <div className="absolute top-4 md:top-8 left-4 md:left-8 z-10">
                 <button
                     onClick={() => router.back()}
-                    className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl backdrop-blur-md border border-white/5 transition-all group"
+                    className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 bg-black/40 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl backdrop-blur-md border border-white/5 transition-all group"
                 >
                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-medium">Go Back</span>
+                    <span className="text-sm font-medium hidden sm:inline">Go Back</span>
                 </button>
             </div>
 
-            <div className="flex-1 flex gap-8 max-w-6xl mx-auto w-full mt-12">
-                {/* Sidebar Navigation */}
-                <div className="w-64 flex flex-col gap-2">
+            <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-8 max-w-6xl mx-auto w-full mt-10 md:mt-12">
+                {/* Sidebar Navigation - Hidden on mobile, shown as tabs */}
+                <div className="md:hidden flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                    <button
+                        onClick={() => setActiveTab('profile')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${activeTab === 'profile'
+                            ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                            : 'bg-white/5 text-slate-400 border border-white/5'
+                            }`}
+                    >
+                        <User className="w-4 h-4" />
+                        Profile
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('security'); setSecurityView('menu'); }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${activeTab === 'security'
+                            ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                            : 'bg-white/5 text-slate-400 border border-white/5'
+                            }`}
+                    >
+                        <Shield className="w-4 h-4" />
+                        Security
+                    </button>
+                    <button
+                        onClick={() => setShowLogoutConfirm(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 whitespace-nowrap"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Log Out
+                    </button>
+                </div>
+
+                {/* Desktop Sidebar */}
+                <div className="hidden md:flex w-64 flex-col gap-2">
                     <h1 className="text-2xl font-bold text-white mb-6 px-4">Settings</h1>
 
                     <button
@@ -308,7 +339,7 @@ export default function ProfilePage() {
                     <div className="absolute inset-0 opacity-20 pointer-events-none"
                         style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, #4c1d95 0%, transparent 50%)' }} />
 
-                    <div className="relative h-full overflow-y-auto p-10">
+                    <div className="h-full overflow-y-auto p-4 md:p-10">
                         {/* Status Message */}
                         <AnimatePresence>
                             {message && (
@@ -333,9 +364,9 @@ export default function ProfilePage() {
                                 <p className="text-slate-400 text-sm mb-10">Manage how you appear to others on Chill Space.</p>
 
                                 {/* Avatar & Role Header */}
-                                <div className="flex items-start gap-8 mb-10">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-8 mb-8 md:mb-10">
                                     <div className="relative group">
-                                        <div className="w-32 h-32 rounded-full border-4 border-[#1a1a1a] bg-[#1a1a1a] overflow-hidden relative shadow-2xl">
+                                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-[#1a1a1a] bg-[#1a1a1a] overflow-hidden relative shadow-2xl">
                                             {avatarUrl ? (
                                                 <Image src={avatarUrl} alt="Profile" fill className="object-cover" />
                                             ) : (
@@ -359,7 +390,7 @@ export default function ProfilePage() {
                                             onChange={handleAvatarUpload}
                                         />
                                     </div>
-                                    <div className="flex flex-col gap-3 pt-2">
+                                    <div className="flex flex-col gap-2 sm:gap-3 pt-0 sm:pt-2 items-center sm:items-start">
                                         <div className="flex flex-col gap-1">
                                             <h3 className="text-xl font-bold text-white">{username || 'User'}</h3>
                                             {getRoleBadge(role)}

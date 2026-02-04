@@ -8,24 +8,23 @@ export const Navbar = () => {
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="fixed top-0 left-0 right-0 z-50 px-6 py-5"
+            className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-4 md:py-5"
         >
             <div className="max-w-6xl mx-auto flex items-center justify-between">
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-2.5 group font-sans">
-                    <div className="w-9 h-9 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Link href="/" className="flex items-center gap-2 md:gap-2.5 group font-sans">
+                    <div className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                         <img src="/logo1.svg" alt="Chill Space Logo" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex items-center">
-
                         <span
-                            className="text-white/50 text-xl tracking-tighter"
+                            className="text-white/50 text-lg md:text-xl tracking-tighter"
                             style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 200 }}
                         >
                             chill
                         </span>
                         <span
-                            className="text-white text-xl tracking-tighter font-bold ml-1"
+                            className="text-white text-lg md:text-xl tracking-tighter font-bold ml-1"
                             style={{ fontFamily: "'Outfit', sans-serif" }}
                         >
                             space
@@ -47,9 +46,9 @@ export const Navbar = () => {
                 </Link>
 
                 {/* Right Side */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4 md:gap-6">
                     <Link href="/login">
-                        <button className="px-5 py-2 rounded-full border border-white/20 text-sm font-medium text-white hover:bg-white hover:text-black transition-all duration-300">
+                        <button className="px-4 md:px-5 py-2 rounded-full border border-white/20 text-sm font-medium text-white hover:bg-white hover:text-black transition-all duration-300">
                             Login
                         </button>
                     </Link>
@@ -58,3 +57,4 @@ export const Navbar = () => {
         </motion.nav>
     );
 };
+

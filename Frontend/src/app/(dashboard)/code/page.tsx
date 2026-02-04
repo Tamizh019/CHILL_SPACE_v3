@@ -389,11 +389,11 @@ export default function CodePage() {
     const comingSoonLanguages = LANGUAGES.filter(l => l.status === 'coming_soon');
 
     return (
-        <main className="flex-1 flex flex-col overflow-hidden p-6 pt-4 gap-4 relative">
-            {/* Background Ambient Glows */}
+        <main className="flex-1 flex flex-col overflow-hidden p-3 md:p-6 pt-2 md:pt-4 gap-3 md:gap-4 relative">
+            {/* Background Ambient Glows - Smaller on mobile */}
             <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-violet-600/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-fuchsia-600/10 blur-[120px] rounded-full" />
+                <div className="absolute top-[-20%] right-[-10%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-violet-600/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-20%] left-[-10%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-fuchsia-600/10 blur-[120px] rounded-full" />
             </div>
 
             {activeMode === 'playground' ? (
@@ -404,25 +404,26 @@ export default function CodePage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="flex items-center justify-between z-10 flex-shrink-0"
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 flex items-center justify-center border border-white/10">
-                                <Code2 className="w-5 h-5 text-violet-400" />
+                        <div className="flex items-center gap-2 md:gap-3">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 flex items-center justify-center border border-white/10">
+                                <Code2 className="w-4 h-4 md:w-5 md:h-5 text-violet-400" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-white tracking-tight">Code Playground</h1>
-                                <p className="text-slate-500 text-xs">Write, compile, and run code in your browser</p>
+                                <h1 className="text-lg md:text-2xl font-bold text-white tracking-tight">Code Playground</h1>
+                                <p className="hidden md:block text-slate-500 text-xs">Write, compile, and run code in your browser</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5">
+                        <div className="flex items-center gap-2 md:gap-3">
+                            <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-white/5 rounded-full border border-white/5">
                                 <span className={`w-2 h-2 rounded-full ${backendStatus === 'online' ? 'bg-emerald-400' : backendStatus === 'offline' ? 'bg-amber-400' : 'bg-slate-500 animate-pulse'}`} />
-                                <span className="text-xs font-medium text-slate-400">
+                                <span className="text-[10px] md:text-xs font-medium text-slate-400">
                                     {backendStatus === 'online' ? 'Connected' : backendStatus === 'offline' ? 'Demo' : '...'}
                                 </span>
                             </div>
+                            {/* Challenges button - Desktop only */}
                             <button
                                 onClick={() => setActiveMode('challenges')}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10 transition-all text-slate-400 hover:text-white"
+                                className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5 hover:bg-white/10 transition-all text-slate-400 hover:text-white"
                             >
                                 <Trophy className="w-4 h-4 text-amber-400" />
                                 <span className="text-xs font-medium">Challenges</span>
