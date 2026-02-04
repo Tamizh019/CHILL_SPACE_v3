@@ -15,7 +15,8 @@ import {
     ChevronUp,
     MessageSquare,
     Gamepad2,
-    UploadCloud
+    UploadCloud,
+    Users
 } from 'lucide-react';
 
 // Type interfaces for Supabase queries and local types
@@ -53,7 +54,8 @@ const getLevelTier = (level: number) => {
 };
 
 import { useGlobalStore } from '@/context/GlobalStoreContext';
-// ... imports
+import { OnlineUsersSection } from './OnlineUsersSection';
+
 
 export function RightSidebar() {
     const { sidebarData, updateSidebarData } = useRecentActivity();
@@ -63,6 +65,10 @@ export function RightSidebar() {
 
     const [isLoading, setIsLoading] = useState(sidebarData.lastFetched === 0);
     const [showRankGuide, setShowRankGuide] = useState(false);
+
+    // Tab state - default to 'online'
+    const [activeTab, setActiveTab] = useState<'online' | 'buzz'>('online');
+    const [onlineCount, setOnlineCount] = useState(0);
 
     // Collapsible State (Local UI state doesn't need to be global)
     const [expanded, setExpanded] = useState({
@@ -74,6 +80,51 @@ export function RightSidebar() {
     const toggleSection = (section: keyof typeof expanded) => {
         setExpanded(prev => ({ ...prev, [section]: !prev[section] }));
     };
+
+    // Fetch online user count
+    useEffect(() => {
+        const fetchOnlineCount = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+                const { count } = await supabase
+                    .from('online_members')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('is_online', true)
+                    .neq('user_id', user.id)
+                    .gte('last_seen', fiveMinutesAgo);
+
+                setOnlineCount(count || 0);
+            } catch (error) {
+                console.error('Error fetching online count:', error);
+            }
+        };
+
+        fetchOnlineCount();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('online-count')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'online_members'
+                },
+                () => {
+                    fetchOnlineCount();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
     // 1. Fetch Data (Only if stale > 60s or empty)
     useEffect(() => {
@@ -219,7 +270,7 @@ export function RightSidebar() {
         };
 
         fetchData();
-    }, []); // Run on mount (but efficiently thanks to internal check)
+    }, [user]); // Re-run when user loads
 
 
     const [mounted, setMounted] = useState(false);
@@ -326,69 +377,88 @@ export function RightSidebar() {
                 )}
             </AnimatePresence>
 
-            {/* 1. Friends Buzz Feed - Collapsible using Cached Data */}
+            {/* Tabbed Section - Online Users / Friends Buzz */}
             <div className="glass rounded-2xl border border-white/5 backdrop-blur-xl overflow-hidden flex-shrink-0">
-                <div
-                    className="p-5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
-                    onClick={() => toggleSection('buzz')}
-                >
-                    <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        Friends Buzz
-                        <Zap size={12} className="text-slate-600" />
-                    </h3>
-                    {expanded.buzz ? <ChevronUp size={16} className="text-slate-600" /> : <ChevronDown size={16} className="text-slate-600" />}
+                {/* Tab Headers - Premium Pill Style */}
+                <div className="p-3 flex gap-2 bg-black/20">
+                    <button
+                        onClick={() => setActiveTab('online')}
+                        className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-300
+                            ${activeTab === 'online'
+                                ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                    >
+                        <Users size={14} />
+                        <span>Online</span>
+                        {onlineCount > 0 && (
+                            <span className={`inline-flex items-center justify-center px-1.5 py-0.5 min-w-[18px] rounded-full text-[9px] font-bold
+                                ${activeTab === 'online'
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-green-500 text-white'}`}>
+                                {onlineCount}
+                            </span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('buzz')}
+                        className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-300
+                            ${activeTab === 'buzz'
+                                ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                            }`}
+                    >
+                        <Zap size={14} />
+                        <span>Buzz</span>
+                    </button>
                 </div>
 
-                <AnimatePresence>
-                    {expanded.buzz && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                        >
-                            <div className="px-5 pb-5 space-y-4">
-                                {isLoading && sidebarData.activities.length === 0 ? (
-                                    <p className="text-xs text-slate-500 italic text-center py-2">Loading buzz...</p>
-                                ) : sidebarData.activities.length > 0 ? (
-                                    sidebarData.activities.map((item) => (
-                                        <div key={item.id} className="flex items-start gap-3.5 cursor-pointer group" onClick={() => item.link && router.push(item.link)}>
-                                            <div className="relative mt-0.5">
-                                                {item.avatar ? (
-                                                    <img src={item.avatar} className="w-8 h-8 rounded-full object-cover ring-2 ring-transparent group-hover:ring-white/10 transition-all" alt={item.username} />
-                                                ) : (
-                                                    <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
-                                                        {item.username[0]?.toUpperCase()}
-                                                    </div>
-                                                )}
-                                                <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#0d0d0d] flex items-center justify-center border-2 border-[#1a1b1e]">
-                                                    {item.type === 'upload' && <UploadCloud size={8} className="text-blue-400" />}
-                                                    {item.type === 'game_score' && <Gamepad2 size={8} className="text-amber-400" />}
-                                                    {item.type === 'online' && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
+                {/* Tab Content */}
+                <div className="p-5">
+                    {activeTab === 'online' ? (
+                        <OnlineUsersSection />
+                    ) : (
+                        <div className="space-y-4">
+                            {isLoading && sidebarData.activities.length === 0 ? (
+                                <p className="text-xs text-slate-500 italic text-center py-2">Loading buzz...</p>
+                            ) : sidebarData.activities.length > 0 ? (
+                                sidebarData.activities.map((item) => (
+                                    <div key={item.id} className="flex items-start gap-3.5 cursor-pointer group" onClick={() => item.link && router.push(item.link)}>
+                                        <div className="relative mt-0.5">
+                                            {item.avatar ? (
+                                                <img src={item.avatar} className="w-8 h-8 rounded-full object-cover ring-2 ring-transparent group-hover:ring-white/10 transition-all" alt={item.username} />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300">
+                                                    {item.username[0]?.toUpperCase()}
                                                 </div>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start">
-                                                    <p className="text-xs font-bold text-slate-200 group-hover:text-violet-400 transition-colors truncate pr-2">
-                                                        {item.username}
-                                                    </p>
-                                                    <span className="text-[9px] text-slate-600 whitespace-nowrap">
-                                                        {formatTimeAgo(new Date(item.timestamp))}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[10px] text-slate-400 leading-snug mt-0.5 truncate">
-                                                    {item.details}
-                                                </p>
+                                            )}
+                                            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#0d0d0d] flex items-center justify-center border-2 border-[#1a1b1e]">
+                                                {item.type === 'upload' && <UploadCloud size={8} className="text-blue-400" />}
+                                                {item.type === 'game_score' && <Gamepad2 size={8} className="text-amber-400" />}
+                                                {item.type === 'online' && <div className="w-1.5 h-1.5 rounded-full bg-green-500" />}
                                             </div>
                                         </div>
-                                    ))
-                                ) : (
-                                    <p className="text-xs text-slate-500 italic text-center py-2">No active buzz...</p>
-                                )}
-                            </div>
-                        </motion.div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-xs font-bold text-slate-200 group-hover:text-violet-400 transition-colors truncate pr-2">
+                                                    {item.username}
+                                                </p>
+                                                <span className="text-[9px] text-slate-600 whitespace-nowrap">
+                                                    {formatTimeAgo(new Date(item.timestamp))}
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 leading-snug mt-0.5 truncate">
+                                                {item.details}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-xs text-slate-500 italic text-center py-2">No active buzz...</p>
+                            )}
+                        </div>
                     )}
-                </AnimatePresence>
+                </div>
             </div>
 
             {/* 2. Level Progress Premium Card - Collapsible */}

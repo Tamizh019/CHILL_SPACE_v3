@@ -1,0 +1,377 @@
+return (
+    <div className="flex-1 flex overflow-hidden h-full">
+        <div className="flex-1 flex flex-col relative bg-gradient-to-b from-[#0c0c0c] to-[#110d1c] min-h-0">
+            {/* Header - Hidden on mobile since we have mobile channel picker */}
+            <div className="hidden md:flex h-16 items-center justify-between px-6 border-b border-white/5 bg-black/10 backdrop-blur-md z-10 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl text-slate-500">#</span>
+                    <div>
+                        <h2 className="font-heading text-lg font-bold text-white leading-tight">
+                            {currentChannel?.name || 'Select a channel'}
+                        </h2>
+                        <p className="text-[10px] text-slate-400">{currentChannel?.description || ''}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {/* Your existing header buttons - keep as is */}
+                    {canPin && currentChannel && currentChannel.id !== 'announcements' && (
+                        <button
+                            onClick={() => setShowSettingsModal(true)}
+                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 hover:bg-violet-500/20 hover:border-violet-500/30 hover:text-violet-400 transition-all"
+                            title="Channel Settings"
+                        >
+                            <span className="material-icons-round text-lg">settings</span>
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowDemoModal(true)}
+                        className="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 hover:bg-violet-500/20 hover:border-violet-500/30 hover:text-violet-400 transition-all"
+                        title="How to use chat"
+                    >
+                        <span className="material-icons-round text-lg">help_outline</span>
+                    </button>
+                    <button
+                        onClick={() => setShowPinnedPanel(true)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all
+                            ${pinnedMessages.length > 0
+                                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20'
+                                : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                    >
+                        <span className="material-icons-round text-sm">push_pin</span>
+                        <span className="text-xs font-medium">{pinnedMessages.length || 0}</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Messages Area - Fixed mobile sizing */}
+            <div
+                ref={messagesContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto px-3 sm:px-4 py-2 sm:py-4 space-y-0.5 min-h-0"
+            >
+                <div className="flex flex-col items-center justify-center text-center py-8 opacity-50">
+                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
+                        <span className="material-icons-round text-2xl text-slate-600">tag</span>
+                    </div>
+                    <p className="text-slate-500 text-xs">Welcome to #{currentChannel?.name || 'channel'}.</p>
+                </div>
+
+                {messages.map((msg, index) => {
+                    const isCurrentUser = msg.user_id === currentUser?.id;
+                    const avatar = msg.users?.avatar_url;
+                    const messageRole = msg.users?.role || null;
+                    const canDelete = canDeleteMessage(msg.user_id || '', messageRole);
+                    const urls = extractUrls(msg.content || '');
+                    const prevMsg = index > 0 ? messages[index - 1] : null;
+                    const isGrouped = shouldGroupWithPrevious(msg, prevMsg);
+
+                    // Date Divider
+                    const currentDate = new Date(msg.sent_at || Date.now());
+                    const outputDate = currentDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+                    let showDivider = false;
+                    if (index === 0) showDivider = true;
+                    else {
+                        const prevDate = new Date(messages[index - 1].sent_at || Date.now());
+                        if (currentDate.toDateString() !== prevDate.toDateString()) showDivider = true;
+                    }
+
+                    return (
+                        <div key={msg.id}>
+                            {showDivider && (
+                                <div className="flex items-center justify-center my-4 sm:my-6 gap-4">
+                                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent flex-1 max-w-[6rem] sm:max-w-[8rem]"></div>
+                                    <span className="px-2 sm:px-3 py-1 rounded-full border border-white/10 bg-white/[0.03] text-[9px] sm:text-[10px] font-medium text-slate-400">
+                                        {outputDate}
+                                    </span>
+                                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent flex-1 max-w-[6rem] sm:max-w-[8rem]"></div>
+                                </div>
+                            )}
+
+                            {/* Message Row - Mobile optimized */}
+                            <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${isGrouped ? 'mt-0.5' : 'mt-2 sm:mt-3'}`}>
+                                {/* Left side: Avatar for other users */}
+                                {!isCurrentUser && (
+                                    <div className="w-6 sm:w-10 mr-1.5 sm:mr-3 flex-shrink-0">
+                                        {!isGrouped && (
+                                            <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white text-[10px] sm:text-sm font-bold overflow-hidden">
+                                                {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : (msg.username?.[0]?.toUpperCase() || 'U')}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Message Bubble Container - Fixed mobile width */}
+                                <div className={`relative max-w-[78%] sm:max-w-[75%] md:max-w-[70%] group/msg ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
+                                    {/* Username & Time - Only for non-grouped */}
+                                    {!isGrouped && (
+                                        <div className={`flex flex-wrap items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                                            <span className="font-semibold text-[11px] sm:text-sm text-white">{msg.username}</span>
+                                            {messageRole && messageRole !== 'user' && (
+                                                <span className={`text-[7px] sm:text-[9px] px-1 sm:px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide
+                                                    ${messageRole === 'admin'
+                                                        ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300 shadow-sm shadow-amber-500/10'
+                                                        : messageRole === 'moderator'
+                                                            ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-300 shadow-sm shadow-violet-500/10'
+                                                            : messageRole === 'vip'
+                                                                ? 'bg-gradient-to-r from-pink-500/30 via-purple-500/30 to-cyan-500/30 border-2 border-pink-400/50 shadow-lg shadow-pink-500/30 animate-pulse'
+                                                                : 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-300 shadow-sm shadow-violet-500/10'
+                                                    }`}>
+                                                    <span className={messageRole === 'vip' ? 'bg-gradient-to-r from-pink-300 via-purple-200 to-cyan-300 bg-clip-text text-transparent' : ''}>
+                                                        {messageRole === 'vip' ? '✨ VIP ✨' : messageRole}
+                                                    </span>
+                                                </span>
+                                            )}
+                                            <span className="text-[8px] sm:text-[10px] text-slate-500">
+                                                {formatTime(msg.sent_at)}
+                                                {msg.edited_at && <span className="text-[7px] sm:text-[9px] text-slate-600 ml-1">(edited)</span>}
+                                            </span>
+                                            {msg.pinned && <span className="material-icons-round text-yellow-500 text-[10px] sm:text-xs">push_pin</span>}
+                                        </div>
+                                    )}
+
+                                    {/* Message Bubble with Arrow */}
+                                    <div className="relative inline-block w-full">
+                                        {/* Reply Quote - Show if this message is a reply */}
+                                        {msg.reply_to_id && (() => {
+                                            const replyToMsg = messages.find(m => m.id === msg.reply_to_id);
+                                            if (!replyToMsg) return null;
+                                            return (
+                                                <button
+                                                    onClick={() => {
+                                                        const el = document.getElementById(`msg-${msg.reply_to_id}`);
+                                                        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                        el?.classList.add('bg-violet-500/10');
+                                                        setTimeout(() => el?.classList.remove('bg-violet-500/10'), 2000);
+                                                    }}
+                                                    className={`flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5 text-left max-w-full group/reply
+                                                        ${isCurrentUser ? 'ml-auto' : ''}`}
+                                                >
+                                                    <div className={`w-0.5 h-4 sm:h-6 rounded-full flex-shrink-0 
+                                                        ${isCurrentUser ? 'bg-violet-300/50' : 'bg-slate-500/50'}`} />
+                                                    <div className="min-w-0 overflow-hidden">
+                                                        <span className={`text-[9px] sm:text-[10px] font-medium 
+                                                            ${isCurrentUser ? 'text-violet-200/70' : 'text-slate-400'}`}>
+                                                            ↳ {replyToMsg.username}
+                                                        </span>
+                                                        <p className={`text-[10px] sm:text-[11px] truncate max-w-[150px] sm:max-w-[200px]
+                                                            ${isCurrentUser ? 'text-violet-100/50' : 'text-slate-500'}
+                                                            group-hover/reply:text-violet-300 transition-colors`}>
+                                                            {replyToMsg.content?.slice(0, 50)}{(replyToMsg.content?.length || 0) > 50 ? '...' : ''}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })()}
+
+                                        {/* The Message - Mobile optimized padding */}
+                                        <div
+                                            id={`msg-${msg.id}`}
+                                            className={`px-2 sm:px-3.5 py-1.5 sm:py-2.5 rounded-2xl text-[11px] sm:text-sm leading-relaxed transition-colors duration-500 ${msg.content?.startsWith('[MD]\n') ? '' : 'whitespace-pre-wrap break-words'}
+                                            ${isCurrentUser
+                                                    ? 'bg-violet-900/40 border border-violet-500/20 text-violet-50 rounded-br-md'
+                                                    : 'bg-[#1e1e1e] border border-white/5 text-slate-200 rounded-bl-md'
+                                                }`}
+                                        >
+                                            {msg.content?.startsWith('[MD]\n') ? (
+                                                <MarkdownRenderer content={msg.content.substring(5)} />
+                                            ) : (
+                                                renderMessageContent(msg.content || '')
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Click-only Arrow - Mobile optimized positioning */}
+                                    <div
+                                        data-message-menu
+                                        className={`absolute top-0.5 sm:top-1 ${isCurrentUser ? '-left-6 sm:-left-8' : '-right-6 sm:-right-8'}
+                                                        ${activeMessageMenu === msg.id ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}
+                                                        transition-opacity duration-150`}
+                                    >
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveMessageMenu(activeMessageMenu === msg.id ? null : msg.id);
+                                            }}
+                                            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/10 
+                                                           flex items-center justify-center text-slate-400 
+                                                           hover:text-white transition-all shadow-lg
+                                                           ${activeMessageMenu === msg.id ? 'bg-violet-600 text-white' : 'bg-[#2a2a2a] hover:bg-white/10'}`}
+                                        >
+                                            <span className={`material-icons-round text-xs sm:text-sm transition-transform duration-200 ${activeMessageMenu === msg.id ? 'rotate-180' : ''}`}>expand_more</span>
+                                        </button>
+
+                                        {/* Your existing dropdown menu code stays the same */}
+                                        {activeMessageMenu === msg.id && (
+                                            <div
+                                                className={`absolute z-50 bottom-full mb-1 
+                                                                ${isCurrentUser ? 'right-0' : 'left-0'}
+                                                                bg-[#1a1a1a] border border-white/10 rounded-xl 
+                                                                shadow-2xl overflow-hidden w-[180px] animate-scale-in`}
+                                                onClick={e => e.stopPropagation()}
+                                            >
+                                                {/* Keep all your existing dropdown content */}
+                                                {/* ... reactions, menu actions, etc ... */}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Link Previews */}
+                                    {urls.length > 0 && (
+                                        <div className="mt-1.5 sm:mt-2">
+                                            {urls.slice(0, 1).map((url, i) => (
+                                                <LinkPreview key={i} url={url} />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Reactions Display - Mobile optimized */}
+                                    {(msg as any).reactions && (msg as any).reactions.length > 0 && (
+                                        <div className={`flex items-center gap-0.5 sm:gap-1.5 mt-1 sm:mt-2 flex-wrap ${isCurrentUser ? 'justify-end' : ''}`}>
+                                            {(msg as any).reactions.map((reaction: { emoji: string; count: number; userIds: string[]; usernames?: string[] }) => {
+                                                const hasReacted = reaction.userIds.includes(currentUser?.id || '');
+                                                const tooltipText = reaction.usernames?.join(', ') || 'Loading...';
+                                                return (
+                                                    <button
+                                                        key={reaction.emoji}
+                                                        onClick={() => setViewingReaction({
+                                                            emoji: reaction.emoji,
+                                                            count: reaction.count,
+                                                            usernames: reaction.usernames || []
+                                                        })}
+                                                        title={`${tooltipText} reacted with ${reaction.emoji}`}
+                                                        className={`flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-xs transition-all cursor-pointer
+                                                            ${hasReacted
+                                                                ? 'bg-violet-500/20 border border-violet-500/50 text-violet-300'
+                                                                : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
+                                                            }`}
+                                                    >
+                                                        <span className="text-xs sm:text-base">{reaction.emoji}</span>
+                                                        <span className="font-medium text-[9px] sm:text-xs">{reaction.count}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right side: Avatar for current user */}
+                                {isCurrentUser && (
+                                    <div className="w-6 sm:w-10 ml-1.5 sm:ml-3 flex-shrink-0">
+                                        {!isGrouped && (
+                                            <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] sm:text-sm font-bold overflow-hidden">
+                                                {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : 'Me'}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* Typing Indicator */}
+            <TypingIndicator typingUsers={typingUsers} />
+
+            {/* Jump to Latest */}
+            <JumpToLatest show={showJumpButton} newMessageCount={newMessageCount} onClick={scrollToBottom} />
+
+            {/* Reply Preview */}
+            {replyingTo && (
+                <div className="px-3 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-violet-500/10 to-purple-500/5 border-t border-violet-500/20 flex items-center justify-between animate-slide-up backdrop-blur-sm flex-shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 text-sm overflow-hidden">
+                        <div className="w-0.5 sm:w-1 h-6 sm:h-8 bg-violet-500 rounded-full flex-shrink-0" />
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <span className="material-icons-round text-violet-400 text-sm sm:text-base">reply</span>
+                                <span className="text-slate-400 text-[10px] sm:text-xs">Replying to</span>
+                                <span className="text-white font-medium text-[10px] sm:text-xs">{replyingTo.username}</span>
+                            </div>
+                            <p className="text-slate-500 truncate text-[10px] sm:text-xs mt-0.5 max-w-[200px] sm:max-w-[300px]">{replyingTo.content}</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="text-slate-400 hover:text-white p-0.5 sm:p-1 hover:bg-white/10 rounded-full transition-all">
+                        <span className="material-icons-round text-base sm:text-lg">close</span>
+                    </button>
+                </div>
+            )}
+
+            {/* Input Area - Mobile optimized */}
+            <div className="p-2 sm:p-4 border-t border-white/5 flex-shrink-0 bg-[#0c0c0c]">
+                <div className="relative">
+                    {/* Your existing mention dropdown code */}
+                    {showMentionDropdown && hasMentionMatches && (
+                        // Keep your existing mention dropdown
+                    )}
+
+                    <div
+                        className={`bg-[#1e1e1e] border border-white/10 rounded-2xl px-2 sm:px-4 py-2 sm:py-3 flex items-center gap-1.5 sm:gap-3 relative
+                            ${isAnnouncement && !isAdmin ? 'cursor-not-allowed opacity-50' : ''}`}
+                        onClick={() => isAnnouncement && !isAdmin && setShowRestrictedModal(true)}
+                    >
+                        {/* Add Button with Menu */}
+                        <div className="relative" data-add-button>
+                            <button
+                                type="button"
+                                onClick={() => setShowAddMenu(!showAddMenu)}
+                                className="text-slate-500 hover:text-white transition-colors"
+                                disabled={isAnnouncement && !isAdmin}
+                            >
+                                <span className="material-icons-round text-lg sm:text-xl">add_circle</span>
+                            </button>
+
+                            {/* Your existing add menu */}
+                            {showAddMenu && (
+                                // Keep your existing add menu code
+                            )}
+                        </div>
+
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={inputValue}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder={isAnnouncement && !isAdmin ? "Only admin can message" : `Message #${currentChannel?.name || 'channel'}...`}
+                            disabled={isAnnouncement && !isAdmin}
+                            className="flex-1 bg-transparent text-[11px] sm:text-sm text-white focus:outline-none placeholder-slate-500"
+                        />
+                        
+                        <button className="text-slate-500 hover:text-white transition-colors p-0.5 sm:p-1" disabled={isAnnouncement && !isAdmin}>
+                            <span className="material-icons-round text-base sm:text-xl">mood</span>
+                        </button>
+
+                        {/* Send Button */}
+                        <button
+                            onClick={handleSend}
+                            disabled={!inputValue.trim() || (isAnnouncement && !isAdmin)}
+                            className={`p-1 sm:p-2 rounded-xl transition-all duration-200
+                                ${inputValue.trim()
+                                    ? 'bg-violet-600 text-white hover:bg-violet-500 scale-100 opacity-100'
+                                    : 'bg-slate-700/50 text-slate-500 scale-95 opacity-50 cursor-not-allowed'
+                                }`}
+                        >
+                            <span className="material-icons-round text-base sm:text-lg sm:text-xl">send</span>
+                        </button>
+                    </div>
+
+                    {/* Markdown hints - Hidden on mobile */}
+                    <div className="hidden sm:flex items-center justify-between mt-2 px-1">
+                        {/* Your existing markdown hints */}
+                    </div>
+                </div>
+            </div>
+
+            {/* All your existing modals */}
+        </div>
+
+        {/* Online Users Sidebar - Remove h-full that causes issues */}
+        <div className="hidden md:block">
+            <OnlineUsersList onlineUsers={onlineUsers} currentUserId={currentUser?.id || null} />
+        </div>
+
+        {/* All your existing modals continue here */}
+    </div>
+);

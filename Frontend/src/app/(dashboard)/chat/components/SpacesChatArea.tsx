@@ -443,10 +443,10 @@ export function SpacesChatArea({
     }, [activeMessageMenu, showAddMenu]);
 
     return (
-        <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 flex flex-col relative bg-gradient-to-b from-[#0c0c0c] to-[#110d1c]">
-                {/* Header */}
-                <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/10 backdrop-blur-md z-10">
+        <div className="flex-1 flex overflow-hidden h-full w-full">
+            <div className="flex-1 flex flex-col relative bg-gradient-to-b from-[#0c0c0c] to-[#110d1c] min-h-0 w-full">
+                {/* Header - Hidden on mobile since we have mobile channel picker */}
+                <div className="hidden md:flex h-16 items-center justify-between px-6 border-b border-white/5 bg-black/10 backdrop-blur-md z-10 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <span className="text-2xl text-slate-500">#</span>
                         <div>
@@ -490,11 +490,11 @@ export function SpacesChatArea({
                     </div>
                 </div>
 
-                {/* Messages Area */}
+                {/* Messages Area - Fixed mobile sizing */}
                 <div
                     ref={messagesContainerRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 space-y-0.5"
+                    className="flex-1 overflow-y-auto px-3 sm:px-4 py-2 sm:py-4 space-y-0.5 min-h-0 w-full"
                 >
                     <div className="flex flex-col items-center justify-center text-center py-8 opacity-50">
                         <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-3">
@@ -538,23 +538,23 @@ export function SpacesChatArea({
                                 <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} ${isGrouped ? 'mt-0.5' : 'mt-3'}`}>
                                     {/* Left side: Avatar for other users */}
                                     {!isCurrentUser && (
-                                        <div className="w-7 sm:w-10 mr-2 sm:mr-3 flex-shrink-0">
+                                        <div className="w-6 sm:w-10 mr-1.5 sm:mr-3 flex-shrink-0">
                                             {!isGrouped && (
-                                                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold overflow-hidden">
+                                                <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center text-white text-[10px] sm:text-sm font-bold overflow-hidden">
                                                     {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : (msg.username?.[0]?.toUpperCase() || 'U')}
                                                 </div>
                                             )}
                                         </div>
                                     )}
 
-                                    {/* Message Bubble Container */}
-                                    <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] group/msg ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
+                                    {/* Message Bubble Container - Fixed mobile width */}
+                                    <div className={`relative max-w-[78%] sm:max-w-[75%] md:max-w-[70%] group/msg ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
                                         {/* Username & Time - Only for non-grouped */}
                                         {!isGrouped && (
-                                            <div className={`flex flex-wrap items-center gap-1 sm:gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                                                <span className="font-semibold text-xs sm:text-sm text-white">{msg.username}</span>
+                                            <div className={`flex flex-wrap items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                                                <span className="font-semibold text-[11px] sm:text-sm text-white">{msg.username}</span>
                                                 {messageRole && messageRole !== 'user' && (
-                                                    <span className={`text-[8px] sm:text-[9px] px-1.5 sm:px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide
+                                                    <span className={`text-[7px] sm:text-[9px] px-1 sm:px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide
                                                         ${messageRole === 'admin'
                                                             ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-300 shadow-sm shadow-amber-500/10'
                                                             : messageRole === 'moderator'
@@ -816,7 +816,7 @@ export function SpacesChatArea({
 
                 {/* Reply Preview - Smooth animation */}
                 {replyingTo && (
-                    <div className="px-6 py-2.5 bg-gradient-to-r from-violet-500/10 to-purple-500/5 border-t border-violet-500/20 flex items-center justify-between animate-slide-up backdrop-blur-sm">
+                    <div className="px-4 sm:px-6 py-2.5 bg-gradient-to-r from-violet-500/10 to-purple-500/5 border-t border-violet-500/20 flex items-center justify-between animate-slide-up backdrop-blur-sm flex-shrink-0">
                         <div className="flex items-center gap-3 text-sm overflow-hidden">
                             <div className="w-1 h-8 bg-violet-500 rounded-full flex-shrink-0" />
                             <div className="min-w-0">
@@ -834,8 +834,8 @@ export function SpacesChatArea({
                     </div>
                 )}
 
-                {/* Input Area */}
-                <div className="p-4 border-t border-white/5">
+                {/* Input Area - Mobile optimized */}
+                <div className="p-2 sm:p-4 border-t border-white/5 flex-shrink-0 bg-[#0c0c0c]">
                     <div className="relative">
                         {/* Mention Dropdown - Shows Members and Files */}
                         {showMentionDropdown && hasMentionMatches && (
@@ -979,131 +979,35 @@ export function SpacesChatArea({
                                     </div>
                                 )}
                             </div>
-                            <div className={`flex-1 relative bg-[#1e1e1e] border border-white/10 rounded-2xl flex items-center
-                                ${isAnnouncement && !isAdmin ? 'cursor-not-allowed opacity-50' : ''}`}
-                                onClick={() => isAnnouncement && !isAdmin && setShowRestrictedModal(true)}
-                            >
-                                {/* Mention Dropdown - Shows Members and Files */}
-                                {showMentionDropdown && hasMentionMatches && (
-                                    <div className="absolute bottom-full left-0 mb-2 w-72 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 animate-scale-in">
-                                        {/* Tabs */}
-                                        <div className="flex border-b border-white/5">
-                                            <button
-                                                onClick={() => setMentionTab('members')}
-                                                className={`flex-1 px-3 py-2 text-[10px] uppercase tracking-wider transition-colors
-                                                    ${mentionTab === 'members'
-                                                        ? 'text-violet-400 border-b-2 border-violet-500 bg-violet-500/10'
-                                                        : 'text-slate-500 hover:text-slate-300'}`}
-                                            >
-                                                <span className="flex items-center justify-center gap-1.5">
-                                                    <span className="material-icons-round text-xs">person</span>
-                                                    Members ({filteredMentionUsers.length})
-                                                </span>
-                                            </button>
-                                            <button
-                                                onClick={() => setMentionTab('files')}
-                                                className={`flex-1 px-3 py-2 text-[10px] uppercase tracking-wider transition-colors
-                                                    ${mentionTab === 'files'
-                                                        ? 'text-violet-400 border-b-2 border-violet-500 bg-violet-500/10'
-                                                        : 'text-slate-500 hover:text-slate-300'}`}
-                                            >
-                                                <span className="flex items-center justify-center gap-1.5">
-                                                    <span className="material-icons-round text-xs">attach_file</span>
-                                                    Files ({filteredMentionFiles.length})
-                                                </span>
-                                            </button>
-                                        </div>
-
-                                        {/* Members List */}
-                                        {mentionTab === 'members' && (
-                                            <div className="max-h-48 overflow-y-auto">
-                                                {filteredMentionUsers.length > 0 ? (
-                                                    filteredMentionUsers.map(user => (
-                                                        <button
-                                                            key={user.id}
-                                                            onClick={() => insertMention(user.username || '')}
-                                                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
-                                                        >
-                                                            {user.avatar_url ? (
-                                                                <img src={user.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
-                                                            ) : (
-                                                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
-                                                                    {user.username?.[0]?.toUpperCase()}
-                                                                </div>
-                                                            )}
-                                                            <span className="text-sm text-white">{user.username}</span>
-                                                        </button>
-                                                    ))
-                                                ) : (
-                                                    <div className="px-3 py-3 text-center text-xs text-slate-500">
-                                                        No members found
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Files List */}
-                                        {mentionTab === 'files' && (
-                                            <div className="max-h-48 overflow-y-auto">
-                                                {filteredMentionFiles.length > 0 ? (
-                                                    filteredMentionFiles.map(file => {
-                                                        const typeInfo = getFileTypeInfo(file.file_type);
-                                                        return (
-                                                            <button
-                                                                key={file.id}
-                                                                onClick={() => insertFileMention(file)}
-                                                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 text-left"
-                                                            >
-                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${typeInfo.color} bg-white/5`}>
-                                                                    <span className="material-icons-round text-sm">{typeInfo.icon}</span>
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-sm text-white truncate">{file.display_name || file.original_filename}</p>
-                                                                    <p className="text-[10px] text-slate-500 truncate">
-                                                                        {file.file_type.split('/')[1]?.toUpperCase()} • by {file.uploader?.username || 'Unknown'}
-                                                                    </p>
-                                                                </div>
-                                                            </button>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <div className="px-3 py-3 text-center text-xs text-slate-500">
-                                                        No files found in this channel
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    value={inputValue}
-                                    onChange={handleInputChange}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder={isAnnouncement && !isAdmin ? "Only admin can message" : `Message #${currentChannel?.name || 'channel'}...`}
-                                    disabled={isAnnouncement && !isAdmin}
-                                    className="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-slate-500 py-2.5 px-4"
-                                />
-                                <button className="text-slate-500 hover:text-white transition-colors px-3" disabled={isAnnouncement && !isAdmin}>
-                                    <span className="material-icons-round text-xl">mood</span>
-                                </button>
-                            </div>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyDown={handleKeyDown}
+                                placeholder={isAnnouncement && !isAdmin ? "Only admin can message" : `Message #${currentChannel?.name || 'channel'}...`}
+                                disabled={isAnnouncement && !isAdmin}
+                                className="flex-1 bg-transparent text-[11px] sm:text-sm text-white focus:outline-none placeholder-slate-500"
+                            />
+                            <button className="text-slate-500 hover:text-white transition-colors p-1" disabled={isAnnouncement && !isAdmin}>
+                                <span className="material-icons-round text-lg sm:text-xl">mood</span>
+                            </button>
 
                             {/* Send Button - Only visible when text exists */}
                             <button
                                 onClick={handleSend}
                                 disabled={!inputValue.trim() || (isAnnouncement && !isAdmin)}
-                                className={`p-1.5 sm:p-2 rounded-xl transition-all duration-200
+                                className={`p-1 sm:p-2 rounded-xl transition-all duration-200
                                     ${inputValue.trim()
                                         ? 'bg-violet-600 text-white hover:bg-violet-500 scale-100 opacity-100'
                                         : 'bg-slate-700/50 text-slate-500 scale-95 opacity-50 cursor-not-allowed'
                                     }`}
                             >
-                                <span className="material-icons-round text-lg sm:text-xl">send</span>
+                                <span className="material-icons-round text-base sm:text-lg sm:text-xl">send</span>
                             </button>
                         </div>
-                        <div className="flex items-center justify-between mt-2 px-1">
+                        {/* Markdown hints - Hidden on mobile for cleaner UI */}
+                        <div className="hidden sm:flex items-center justify-between mt-2 px-1">
                             <p className="text-[10px] text-slate-600">
                                 <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">```</span> for code • <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded">@</span> to mention • Markdown supported
                             </p>
@@ -1197,8 +1101,7 @@ export function SpacesChatArea({
                 )
             }
 
-            {/* Online Users Sidebar */}
-            <OnlineUsersList onlineUsers={onlineUsers} currentUserId={currentUser?.id || null} />
+
 
             {/* Chat Demo Modal */}
             <ChatDemoModal isOpen={showDemoModal} onClose={() => setShowDemoModal(false)} />
@@ -1217,7 +1120,6 @@ export function SpacesChatArea({
                 />
             )}
 
-            {/* File Mention Popup Modal */}
             {/* File Preview Panel */}
             <FilePreviewPanel
                 file={activeFileMention as any}

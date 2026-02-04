@@ -90,7 +90,7 @@ export const Hero = () => {
                         </Link>
                         <button
                             onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="flex items-center gap-2 text-sm text-[#666] hover:text-white transition-colors group cursor-pointer"
+                            className="hidden md:flex items-center gap-2 text-sm text-[#666] hover:text-white transition-colors group cursor-pointer"
                         >
                             See what it does
                             <ArrowDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
@@ -99,8 +99,8 @@ export const Hero = () => {
                 </motion.div>
             </section>
 
-            {/* Product Preview Section */}
-            <div id="preview">
+            {/* Product Preview Section - Hidden on mobile */}
+            <div id="preview" className="hidden md:block">
                 <ProductPreview />
             </div>
 
