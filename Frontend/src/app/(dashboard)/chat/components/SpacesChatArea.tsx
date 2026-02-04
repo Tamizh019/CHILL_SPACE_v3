@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Database } from '@/types/supabase';
-import { OnlineUsersList } from './OnlineUsersList';
+
 import { TypingIndicator } from './TypingIndicator';
 import { JumpToLatest } from './JumpToLatest';
 import { LinkPreview, extractUrls } from './LinkPreview';
