@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
+import { SearchModal } from './SearchModal';
 
 const statuses = [
     { id: 'focusing', label: 'Focusing', color: 'bg-green-500', borderColor: 'border-green-500/30' },
@@ -13,6 +14,7 @@ const statuses = [
 export function Header() {
     const [currentStatus, setCurrentStatus] = useState('focusing');
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+    const [showSearchModal, setShowSearchModal] = useState(false);
     // Added 'id' to userInfo type
     const [userInfo, setUserInfo] = useState<{ id: string; username: string | null; avatar_url: string | null } | null>(null);
     const router = useRouter();
@@ -43,6 +45,18 @@ export function Header() {
         fetchUser();
     }, []);
 
+    // Keyboard shortcut for search (⌘K or Ctrl+K)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setShowSearchModal(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const activeStatus = statuses.find((s) => s.id === currentStatus)!;
 
     // Determine which pages should show search/status
@@ -61,15 +75,16 @@ export function Header() {
 
                 {/* Desktop: Show search */}
                 {showSearchAndStatus && (
-                    <div className="hidden md:block relative w-full max-w-xl group">
-                        <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-focus-within:text-violet-400 transition-colors">
+                    <div
+                        onClick={() => setShowSearchModal(true)}
+                        className="hidden md:block relative w-full max-w-xl group cursor-pointer"
+                    >
+                        <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm group-hover:text-violet-400 transition-colors">
                             search
                         </span>
-                        <input
-                            className="w-full bg-white/5 border-none focus:ring-1 focus:ring-violet-500/50 rounded-lg pl-10 pr-12 py-2 text-sm text-slate-300 placeholder:text-slate-600 transition-all"
-                            placeholder="Search conversations, projects..."
-                            type="text"
-                        />
+                        <div className="w-full bg-white/5 hover:bg-white/10 border-none rounded-lg pl-10 pr-12 py-2 text-sm text-slate-600 transition-all">
+                            Search conversations, projects...
+                        </div>
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-slate-500 font-mono bg-white/5">
                             ⌘K
                         </div>
@@ -144,6 +159,9 @@ export function Header() {
                     )}
                 </div>
             </div>
+
+            {/* Search Modal */}
+            <SearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
         </header>
     );
 }

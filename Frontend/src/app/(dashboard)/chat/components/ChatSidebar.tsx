@@ -51,6 +51,7 @@ export function ChatSidebar({
     const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Calculate total DM unread count for sidebar badge
     const totalDmUnread = unreadDmCounts ? Object.values(unreadDmCounts).reduce((a, b) => a + b, 0) : 0;
@@ -79,6 +80,27 @@ export function ChatSidebar({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [channels]);
+
+    // Filter channels based on search query
+    const filteredChannels = useMemo(() => {
+        if (!searchQuery.trim()) return channels;
+        return channels.filter(channel =>
+            channel.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [channels, searchQuery]);
+
+    // Filter DMs based on search query
+    const filteredUsers = useMemo(() => {
+        if (!searchQuery.trim()) return users;
+        return users.filter(user =>
+            user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [users, searchQuery]);
+
+    // Clear search when switching tabs
+    useEffect(() => {
+        setSearchQuery('');
+    }, [activeTab]);
 
     return (
         <motion.div
@@ -188,9 +210,20 @@ export function ChatSidebar({
                                 <span className="material-icons-round absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
                                 <input
                                     type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={activeTab === 'spaces' ? 'Find a channel...' : 'Search messages...'}
-                                    className="w-full h-9 bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/30 transition-colors"
+                                    className="w-full h-9 bg-black/20 border border-white/5 rounded-lg pl-9 pr-9 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/30 transition-colors"
                                 />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-white transition-colors"
+                                        title="Clear search"
+                                    >
+                                        <span className="material-icons-round text-sm">close</span>
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -210,7 +243,17 @@ export function ChatSidebar({
                                         Create Channel
                                     </button>
                                 )}
-                                <SpacesList selectedId={selectedChat} onSelect={onSelectChat} channels={channels} unreadCounts={unreadCounts} />
+                                {filteredChannels.length > 0 ? (
+                                    <SpacesList selectedId={selectedChat} onSelect={onSelectChat} channels={filteredChannels} unreadCounts={unreadCounts} />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-8 text-center opacity-50">
+                                        <span className="material-icons-round text-3xl text-slate-600 mb-2">search_off</span>
+                                        <p className="text-xs text-slate-500">No channels found</p>
+                                        {searchQuery && (
+                                            <p className="text-[10px] text-slate-600 mt-1">Try a different search term</p>
+                                        )}
+                                    </div>
+                                )}
                             </>
                         )}
 
@@ -224,7 +267,17 @@ export function ChatSidebar({
                         )}
 
                         {activeTab === 'dms' && (
-                            <DirectMessagesList selectedId={selectedChat} onSelect={onSelectChat} users={users} unreadDmCounts={unreadDmCounts} />
+                            filteredUsers.length > 0 ? (
+                                <DirectMessagesList selectedId={selectedChat} onSelect={onSelectChat} users={filteredUsers} unreadDmCounts={unreadDmCounts} />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center opacity-50">
+                                    <span className="material-icons-round text-3xl text-slate-600 mb-2">person_search</span>
+                                    <p className="text-xs text-slate-500">No users found</p>
+                                    {searchQuery && (
+                                        <p className="text-[10px] text-slate-600 mt-1">Try a different search term</p>
+                                    )}
+                                </div>
+                            )
                         )}
                     </div>
 
