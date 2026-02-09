@@ -1064,10 +1064,10 @@ export default function SnakeBattlePage() {
         };
     }, [activeRoomCode]);
 
-    // Keyboard controls
+    // Keyboard controls with client-side prediction
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (!wsRef.current || gameState?.phase !== 'Playing') return;
+            if (!wsRef.current || gameState?.phase !== 'Playing' || !playerId) return;
 
             let direction: Direction | null = null;
             switch (e.key) {
@@ -1095,13 +1095,48 @@ export default function SnakeBattlePage() {
 
             if (direction) {
                 e.preventDefault();
+
+                // CLIENT-SIDE PREDICTION: Update local state immediately for instant feedback
+                setGameState(prevState => {
+                    if (!prevState || !playerId) return prevState;
+
+                    const player = prevState.players[playerId];
+                    if (!player) return prevState;
+
+                    // Check if direction change is valid (can't reverse)
+                    const currentDir = player.snake.direction;
+                    const isOpposite =
+                        (currentDir === 'Up' && direction === 'Down') ||
+                        (currentDir === 'Down' && direction === 'Up') ||
+                        (currentDir === 'Left' && direction === 'Right') ||
+                        (currentDir === 'Right' && direction === 'Left');
+
+                    if (isOpposite) return prevState; // Invalid move, don't update
+
+                    // Create new state with updated direction
+                    return {
+                        ...prevState,
+                        players: {
+                            ...prevState.players,
+                            [playerId]: {
+                                ...player,
+                                snake: {
+                                    ...player.snake,
+                                    next_direction: direction // Update next direction for visual feedback
+                                }
+                            }
+                        }
+                    };
+                });
+
+                // Send to server (server state will be authoritative and overwrite on next tick)
                 wsRef.current.send(JSON.stringify({ type: 'Direction', payload: { direction } }));
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [gameState?.phase]);
+    }, [gameState?.phase, playerId]);
 
     const sendMessage = useCallback((msg: object) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
