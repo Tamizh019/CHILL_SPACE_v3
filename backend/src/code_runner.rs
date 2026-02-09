@@ -83,7 +83,6 @@ fn truncate_output(output: String) -> String {
     }
 }
 
-/// Execute code in the specified language with timeout
 /// Returns (stdout, stderr, exit_code) or an error message
 pub async fn execute(language: &str, code: &str) -> Result<(String, String, i32), String> {
     // Security check first
