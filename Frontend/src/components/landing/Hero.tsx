@@ -85,7 +85,7 @@ export const Hero = () => {
                         transition={{ delay: 0.4, duration: 0.8 }}
                         className="flex flex-col items-center gap-6"
                     >
-                        <Link href="/signup">
+                        <Link href="/login">
                             <CobaltButton>Join Chill Space</CobaltButton>
                         </Link>
                         <button
